@@ -2,6 +2,10 @@
     "cSpell.words": [
         "allclose",
         "excinfo",
-        "hdcam"
+        "ffts",
+        "hdcam",
+        "ifft",
+        "LFSRs",
+        "tobytes"
     ]
 }
