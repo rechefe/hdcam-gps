@@ -1,12 +1,14 @@
 {
     "cSpell.words": [
         "allclose",
+        "codebook",
         "excinfo",
         "ffts",
         "hdcam",
         "ifft",
         "isrealobj",
         "LFSRs",
+        "Retunes",
         "tobytes"
     ]
 }
