@@ -5,6 +5,7 @@
         "ffts",
         "hdcam",
         "ifft",
+        "isrealobj",
         "LFSRs",
         "tobytes"
     ]
