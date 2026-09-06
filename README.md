@@ -71,3 +71,36 @@ fails rather than silently reporting something else.
 The simulator places a satellite at a fractional code phase while an acquisition
 can only answer in whole samples, hence
 `matches(..., code_phase_tolerance=1)`.
+
+## Scoring a classifier
+
+`evaluate` takes any classifier with the `GpsL1AcqClassifier` interface and a
+test configuration, sweeps C/N0 and reports quality metrics. Both classifiers go
+through the same measurement on the same scenarios.
+
+```python
+from hdcam_gps.evaluate import EvalConfig, evaluate
+
+report = evaluate(FftAcqClassifier(config), EvalConfig(
+    n_scenarios=10, cn0_dbhz=(48, 45, 42, 39, 36), n_satellites=1,
+))
+print(report.table())
+report.sensitivity_cn0_dbhz(min_accuracy=0.9)
+```
+
+Per C/N0 it reports detection rate, accuracy (right PRN, Doppler bin and code
+phase), precision, false alarms per scenario, the fraction of scenarios answered
+completely, Doppler and code phase RMSE, and seconds per scenario. Set
+`backend="simulator"` to run against real skies instead of synthetic ones; each
+scenario then uses a different scenario time, so the constellation varies.
+
+## Example notebook
+
+`notebooks/example_run.ipynb` walks the whole repository once, with plots: the
+Gold code correlation properties, a labelled signal, the FFT reference search
+grid, the HdCam codebook, a scored sweep of both classifiers, and a real
+simulated sky.
+
+```bash
+uv run jupyter lab notebooks/example_run.ipynb
+```
