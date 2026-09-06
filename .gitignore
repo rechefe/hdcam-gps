@@ -13,3 +13,6 @@ dist/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Patched build of the vendored simulator
+third_party/build/

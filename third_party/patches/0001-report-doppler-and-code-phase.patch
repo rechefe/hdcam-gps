@@ -1,0 +1,16 @@
+--- a/gpssim.c	2026-09-05 22:41:59.777796745 +0300
++++ b/gpssim.c	2026-09-05 22:41:59.988236978 +0300
+@@ -2283,6 +2283,13 @@
+ 
+ 				// Update code phase and data bit counters
+ 				computeCodePhase(&chan[i], rho, 0.1);
++
++				// Report the channel state this tick's samples start from, so a
++				// caller can label the generated signal without measuring it.
++				// f_carr is the Doppler in Hz, code_phase is in chips.
++				if (verb==TRUE)
++					fprintf(stderr, "TRUTH %d %02d %.9f %.9f\n",
++						iumd, chan[i].prn, chan[i].f_carr, chan[i].code_phase);
+ #ifndef FLOAT_CARR_PHASE
+ 				chan[i].carr_phasestep = (int)round(512.0 * 65536.0 * chan[i].f_carr * delt);
+ #endif

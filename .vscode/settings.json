@@ -1,14 +1,26 @@
 {
     "cSpell.words": [
         "allclose",
+        "baseband",
+        "brdc",
         "codebook",
+        "correlator",
+        "dbhz",
+        "Dopplers",
+        "ephemerides",
         "excinfo",
         "ffts",
+        "gpssim",
         "hdcam",
         "ifft",
+        "iono",
+        "iscomplexobj",
         "isrealobj",
         "LFSRs",
+        "prns",
+        "pseudorange",
         "Retunes",
+        "RINEX",
         "tobytes"
     ]
 }
