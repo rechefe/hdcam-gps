@@ -3,6 +3,7 @@
         "allclose",
         "baseband",
         "brdc",
+        "Clopper",
         "codebook",
         "correlator",
         "dbhz",
