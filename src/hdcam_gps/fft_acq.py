@@ -65,6 +65,48 @@ class FftAcqClassifier(GpsL1AcqClassifier):
             grid[bin_index] = np.sum(np.abs(correlation) ** 2, axis=0)
         return grid
 
+    def surfaces(self, samples: np.ndarray) -> dict[int, np.ndarray]:
+        """The correlation grid of every configured PRN.
+
+        This is the expensive half of an acquisition, and it does not depend on
+        peak_ratio. Calibrating the reference at a matched false alarm rate means
+        replaying a grid of ratios, so the surfaces are computed once and the
+        decision is read off them by decide.
+
+        Args:
+            samples (np.ndarray): Input samples, samples_per_acquisition long.
+
+        Returns:
+            dict[int, np.ndarray]: One grid per PRN of the configuration.
+        """
+        return {prn: self.correlate(samples, prn) for prn in self.config.prn_list}
+
+    def decide(
+        self, surfaces: dict[int, np.ndarray], peak_ratio: float
+    ) -> list[PrnResult]:
+        """Declares every PRN whose surface clears a peak ratio.
+
+        Args:
+            surfaces (dict[int, np.ndarray]): Correlation grids, per PRN.
+            peak_ratio (float): The ratio above which a PRN is acquired.
+
+        Returns:
+            list[PrnResult]: One result per acquired PRN.
+        """
+        results = []
+        for prn in self.config.prn_list:
+            grid = surfaces[prn]
+            doppler_bin, code_phase = np.unravel_index(np.argmax(grid), grid.shape)
+            if self._peak_ratio(grid[doppler_bin], code_phase) >= peak_ratio:
+                results.append(
+                    PrnResult(
+                        prn=prn,
+                        doppler_hz=float(self.config.doppler_grid_hz[doppler_bin]),
+                        code_phase=int(code_phase),
+                    )
+                )
+        return results
+
     def _acquire(self, samples: np.ndarray) -> list[PrnResult]:
         """Acquires every configured PRN that clears the peak ratio.
 
@@ -74,19 +116,7 @@ class FftAcqClassifier(GpsL1AcqClassifier):
         Returns:
             list[PrnResult]: One result per acquired PRN.
         """
-        results = []
-        for prn in self.config.prn_list:
-            grid = self.correlate(samples, prn)
-            doppler_bin, code_phase = np.unravel_index(np.argmax(grid), grid.shape)
-            if self._peak_ratio(grid[doppler_bin], code_phase) >= self.peak_ratio:
-                results.append(
-                    PrnResult(
-                        prn=prn,
-                        doppler_hz=float(self.config.doppler_grid_hz[doppler_bin]),
-                        code_phase=int(code_phase),
-                    )
-                )
-        return results
+        return self.decide(self.surfaces(samples), self.peak_ratio)
 
     def _peak_ratio(self, doppler_row: np.ndarray, code_phase: int) -> float:
         """Ratio between the peak and the largest sample more than a chip away.

@@ -49,16 +49,25 @@ class CamAcqClassifier(GpsL1AcqClassifier):
     def build_codebook(self) -> np.ndarray          # (n_rows, n_columns) bool
     def row_index(self) -> RowIndex                 # what each row means
     def query_index(self, n_samples) -> QueryIndex  # what each query means
-    def build_queries(self, samples) -> Iterator[tuple[int, np.ndarray]]
-    def chance_floor(self, n_draws=512) -> tuple[float, float]   # measured mean, sd
+    def query_variants(self, samples, q) -> list[np.ndarray]  # a cell needs one to match
 
     # shared, never overridden
+    def build_queries(self, samples) -> Iterator[tuple[int, np.ndarray]]
+    def chance_floor(self, n_draws=512) -> tuple[float, float]   # measured mean, sd
     def distance_table(self, samples) -> np.ndarray  # GEMM, (n_queries, n_rows)
+    def matched_table(self, samples) -> np.ndarray   # the same hits, one search_cam each
+    def shortlist_cells(self, matched, min_votes) -> dict[Cell, list[int]]
+    def rank_cells(self, distances) -> list[PrnResult]
     def decide(self, table, hd_threshold, min_votes) -> list[PrnResult]
     def tightest_match(self, row, query) -> int
     def cost(self) -> CamCost
     def _acquire(self, samples) -> list[PrnResult]
 ```
+
+`query_variants` is the hook rather than `build_queries` because the CAM path needs the
+variants of one query back after the shortlist is known, and holding all 36 832 x 4 of
+them costs 300 MB. `build_queries` is the iterator over it, and stays the thing the
+family's docstring describes.
 
 `RowIndex` / `QueryIndex` are frozen dataclasses of parallel int arrays. One mapping covers
 every family:
@@ -75,6 +84,17 @@ implementation; `search_mode="cam"` builds the same table one `search_cam` at a 
 CLAUDE.md's "implemented twice and must agree" invariant becomes "one rule, two data
 paths" — **CLAUDE.md is edited in the same change**, and `tests/test_calibrate.py`'s replay
 test becomes a CAM-path-vs-table-path test.
+
+**Two decisions settled while building this, and the reasons, so they are not
+re-derived.** First, the vote-then-rank rule lives once; the CAM path and the table path
+differ only in how a shortlisted cell's distance is obtained — `search_cam` plus
+`tightest_match` on one side, a table lookup on the other. That is a genuine hardware
+difference, not duplication. Second, `shortlist` has to keep **every** rotation of every
+look that matched, not the first one. Votes still count looks rather than rotations, but
+the ranking takes a minimum, and the first rotation to match is not the closest, so
+keeping only it made the two paths disagree by construction. A rotation that did not
+match is further away than the threshold, so keeping all four and taking the minimum is
+the same answer as keeping only the ones that matched.
 
 `quantize_iq`, `rotate_quarter_turns`, `binomial_tail`, `per_look_false_alarm`,
 `hd_threshold_for_false_alarm`, `tightest_match`, `distance_table`, `shortlist`,
@@ -196,17 +216,38 @@ that resolves Doppler is costed in.
 
 ### 4.2 Per-satellite C/N0 — the x-axis (new; the plan had this wrong)
 
-gps-sdr-sim runs with a 0° elevation mask and an antenna pattern reaching −31.6 dB at the
-horizon (`gpssim.c:86`, `:2298`), so the satellites inside one record span >20 dB.
-"Record-level average C/N0" therefore cannot be the sweep variable. Instead, measure C/N0
-**per satellite**, in `scenario_from_record` before noise is added: correlate the clean,
-rescaled record with the truth replica (PRN, Doppler and code phase from `labels`)
-coherently over one code period, giving amplitude `a_i`, and set
-`SatelliteTruth.cn0_dbhz = 10·log10(a_i² · fs_hz)` — the inverse of `amplitude_for_cn0`,
-same unit-noise convention. Error sources: cross-correlation from the other satellites
-(≈ −24 dB → < 0.1 dB) and Doppler quantised to the 0.1 s tick. Test: on a synthetic record
-the estimator recovers the set C/N0 within 0.2 dB. Synthetic scenarios already carry an
+gps-sdr-sim runs with a 0° elevation mask, path loss enabled and a receiver antenna
+pattern reaching −31.6 dB at the horizon (`gpssim.c:86`, `:2298`), so the satellites
+inside one record do not share a C/N0. "Record-level average C/N0" therefore cannot be
+the sweep variable. Instead, measure C/N0 **per satellite**, in `scenario_from_record`
+before noise is added: correlate the clean, rescaled record with the truth replica (PRN,
+Doppler and code phase from `labels`) coherently over one code period, giving amplitude
+`a_i`, and set `SatelliteTruth.cn0_dbhz = 10·log10(a_i² · fs_hz)` — the inverse of
+`amplitude_for_cn0`, same unit-noise convention. Synthetic scenarios already carry an
 exact per-satellite value.
+
+**Two things this section got wrong, found on building it (phase 0).**
+
+*The spread is 8 dB, not >20.* The elevation mask admits horizon satellites, but
+`gain[i] = path_loss × ant_gain` bottoms out near −9 dB, not −31.6: `ant_pat_db` is
+indexed by boresight angle and a satellite at 0° elevation is at 90° boresight, which is
+7.6 dB, and path loss adds 2.2 dB between zenith and horizon. Measured over a real sky:
+40.2 to 48.5 dB-Hz, 8.3 dB, agreeing with that model to 0.6 dB. So the within-record
+spread is not what populates the C/N0 bins; the record scalings of §4.3 are.
+
+*The code phase from `labels` cannot be used as given.* It is the simulator's fractional
+phase rounded to a sample, and at 1.023 MHz one sample is one chip, so a coherent
+correlation at the rounded phase reads an autocorrelation sidelobe. Uncorrected, seven of
+nine satellites came back 15 to 25 dB low and PRN 10 at 68° elevation read weaker than
+PRN 26 at 12°. `measure_cn0_dbhz` therefore takes the best of the code phases within
+`search_samples` (default 1) of the label.
+
+Remaining error: cross-correlation from the rest of the constellation, ≈ −24 dB. That is
+under 0.1 dB for a satellite near the top of the sky and about 2 dB for one 25 dB below
+the strongest — which the measured 8 dB spread never produces. Tests: the estimator
+recovers a synthetic satellite within 0.2 dB, holds to 0.3 dB in a five-satellite crowd
+with navigation data, and a simulated sky's spread is asserted to stay under 20 dB so the
+label-rounding bug cannot come back unnoticed.
 
 ### 4.3 P_d(C/N0) and sensitivity
 
@@ -217,9 +258,9 @@ exact per-satellite value.
 - **Sensitivity** = lowest bin whose P_d point estimate ≥ 0.9, reported with its interval.
   A bin with < 100 observations is greyed out and cannot be the sensitivity.
 - Record scalings are chosen to populate the bins that matter: record-average C/N0 from
-  36 to 54 dB-Hz in 3 dB steps (7 scalings), which puts the horizon satellites at the
-  detection edge and the zenith ones well above it. 40 evaluation skies × ~10 satellites
-  × 7 scalings ≈ 2800 observations over ~25 dB ≈ 110 per bin.
+  36 to 54 dB-Hz in 3 dB steps (7 scalings). With the 8 dB of within-record spread
+  measured in §4.2, that covers roughly 30 to 56 dB-Hz. 40 evaluation skies × ~10
+  satellites × 7 scalings ≈ 2800 observations over ~26 dB ≈ 110 per bin.
 - The same pool gives, for found satellites, the Doppler error and code-phase error
   distributions (median, 95th percentile) — the handover-quality metric of PROPOSAL.
 
@@ -339,7 +380,7 @@ record-average scaling only as the sampling design. No simulator patch.
 
 | phase | work | new tests |
 |---|---|---|
-| 0 | `cam_acq.py`, `hdcam_packed.py`, `cam_cost.py`, `sim_cache.py`, `scenarios.py`; per-satellite C/N0 in `scenario_from_record` (§4.2); refactor `hdcam_acq.py` onto the base; generalise `calibrate`; `evaluate(..., scenarios=)`; edit CLAUDE.md | `test_cam_acq.py`, `test_cam_cost.py`, `test_hdcam_packed.py`, `test_scenarios.py`, C/N0-estimator test in `test_signal_gen.py` |
+| 0 **(done)** | `cam_acq.py`, `hdcam_packed.py`, `cam_cost.py`, `sim_cache.py`, `scenarios.py`; per-satellite C/N0 in `scenario_from_record` (§4.2); refactor `hdcam_acq.py` onto the base; generalise `calibrate`; `evaluate(..., scenarios=)`; edit CLAUDE.md | `test_cam_acq.py`, `test_cam_cost.py`, `test_hdcam_packed.py`, `test_scenarios.py`, `test_sim_cache.py`, C/N0-estimator test in `test_signal_gen.py` |
 | 1 | **cheap screen** — §4.6 `d'(C/N0)` and `T(x)` per family on set A, from distance tables only. Minimal codebook+query per family, no classifier. Minutes each. | `notebooks/family_screen.ipynb` |
 | 2 | full classifiers for survivors, in order: code-only, thermometer, segmented, differential | `test_code_only_acq.py`, `test_thermometer_acq.py`, `test_segmented_acq.py`, `test_diff_acq.py` |
 | 3 | §4.5 calibration on set A for every survivor **and the FFT reference**, backgrounded; freeze the settings in a checked-in JSON | — |

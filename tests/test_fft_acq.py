@@ -336,3 +336,42 @@ def test_single_code_period_acquisition():
     assert FftAcqClassifier(config).acquire(signal) == [
         PrnResult(prn=3, doppler_hz=0.0, code_phase=512)
     ]
+
+
+# --------------------------------------------------------------------------
+# surfaces and decide - the reference's own two data paths
+# --------------------------------------------------------------------------
+
+
+def test_the_surfaces_hold_one_grid_per_configured_prn():
+    config = make_config()
+    classifier = FftAcqClassifier(config)
+    surfaces = classifier.surfaces(make_signal(config, 1))
+    assert set(surfaces) == set(config.prn_list)
+    for grid in surfaces.values():
+        assert grid.shape == (
+            len(config.doppler_grid_hz),
+            config.samples_per_code,
+        )
+
+
+def test_deciding_at_the_classifier_s_own_ratio_is_what_acquire_returns():
+    config = make_config()
+    classifier = FftAcqClassifier(config)
+    signal = make_signal(config, 2, doppler_hz=500.0, code_phase=321)
+    surfaces = classifier.surfaces(signal)
+    assert classifier.decide(surfaces, classifier.peak_ratio) == classifier.acquire(
+        signal
+    )
+
+
+def test_a_higher_ratio_never_reports_more():
+    # This is what calibrating the reference at a matched false alarm rate rests
+    # on: one set of surfaces, replayed over a grid of ratios.
+    config = make_config()
+    classifier = FftAcqClassifier(config)
+    surfaces = classifier.surfaces(make_signal(config, 1, code_phase=50))
+    loose = classifier.decide(surfaces, 1.5)
+    tight = classifier.decide(surfaces, 10.0)
+    assert len(tight) <= len(loose)
+    assert set(r.prn for r in tight) <= set(r.prn for r in loose)
