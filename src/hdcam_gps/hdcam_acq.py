@@ -372,7 +372,7 @@ class OneBitHdCamClassifier(GpsL1AcqClassifier):
 
     def shortlist(
         self, samples: np.ndarray
-    ) -> dict[tuple[int, int], np.ndarray]:
+    ) -> dict[tuple[int, int], list[np.ndarray]]:
         """Collects every hypothesis that falls inside the threshold anywhere.
 
         A hypothesis is kept when it matched on at least min_votes of the looks
@@ -382,12 +382,11 @@ class OneBitHdCamClassifier(GpsL1AcqClassifier):
             samples (np.ndarray): Input samples for acquisition.
 
         Returns:
-            dict[tuple[int, int], np.ndarray]: The query that matched, keyed by
-                the codebook row and the code phase it matched at.
+            dict[tuple[int, int], list[np.ndarray]]: Every query that matched,
+                keyed by the codebook row and the code phase it matched at.
         """
         config = self.config
-        votes: dict[tuple[int, int], int] = {}
-        queries: dict[tuple[int, int], np.ndarray] = {}
+        queries: dict[tuple[int, int], list[np.ndarray]] = {}
         n_starts = config.samples_per_acquisition - config.samples_per_code + 1
         for start in range(n_starts):
             query = quantize_iq(self.query_window(samples, start))
@@ -400,17 +399,20 @@ class OneBitHdCamClassifier(GpsL1AcqClassifier):
                 for row in self.cam.search_cam(rotated):
                     matched.setdefault(int(row), rotated)
             for row, rotated in matched.items():
-                key = (row, code_phase)
-                votes[key] = votes.get(key, 0) + 1
-                queries.setdefault(key, rotated)
+                queries.setdefault((row, code_phase), []).append(rotated)
+        # The number of queries kept for a cell is the number of looks that
+        # matched, so the vote count is just how many were collected.
         return {
-            key: query
-            for key, query in queries.items()
-            if votes[key] >= self.min_votes
+            key: matches
+            for key, matches in queries.items()
+            if len(matches) >= self.min_votes
         }
 
     def _acquire(self, samples: np.ndarray) -> list[PrnResult]:
         """Shortlists hypotheses with the CAM, then ranks them by distance.
+
+        A shortlisted hypothesis is measured on every look that matched, and kept
+        at its best, so the ranking sees a cell at its strongest.
 
         Args:
             samples (np.ndarray): Input samples for acquisition.
@@ -420,8 +422,8 @@ class OneBitHdCamClassifier(GpsL1AcqClassifier):
         """
         candidates = self.shortlist(samples)
         distances = {
-            key: self.tightest_match(key[0], query)
-            for key, query in candidates.items()
+            key: min(self.tightest_match(key[0], query) for query in matches)
+            for key, matches in candidates.items()
         }
         return self._best_per_prn(distances)
 
@@ -458,3 +460,32 @@ class OneBitHdCamClassifier(GpsL1AcqClassifier):
                 )
             )
         return results
+
+    def distance_table(self, samples: np.ndarray) -> np.ndarray:
+        """Every Hamming distance the first pass would ever compare against.
+
+        This is a calibration tool, not part of acquisition. It computes in one
+        sweep what the search does one lookup at a time, so that a threshold and
+        a vote rule can be scored over many records without re-running the CAM
+        for each candidate. The value kept per look is the best over the four
+        rotations, which is what a look actually contributes.
+
+        Args:
+            samples (np.ndarray): Input samples, samples_per_acquisition long.
+
+        Returns:
+            np.ndarray: Distances of shape (n_starts, n_rows).
+        """
+        config = self.config
+        n_starts = config.samples_per_acquisition - config.samples_per_code + 1
+        table = np.empty((n_starts, self.n_rows), dtype=np.int32)
+        grid = self.cam.grid
+        for start in range(n_starts):
+            query = quantize_iq(self.query_window(samples, start))
+            best = None
+            for rotation in range(QUERY_ROTATIONS):
+                rotated = rotate_quarter_turns(query, rotation)
+                distances = np.count_nonzero(grid != rotated, axis=1)
+                best = distances if best is None else np.minimum(best, distances)
+            table[start] = best
+        return table
