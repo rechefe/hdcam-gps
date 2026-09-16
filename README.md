@@ -14,6 +14,50 @@ git clone --recurse-submodules <url>
 git submodule update --init --recursive
 ```
 
+## Two ways to acquire
+
+Both classifiers answer the same question — which satellites are present, at what
+Doppler and at what code phase — but they parallelise it along different axes.
+
+**The FFT reference** (`fft_acq`) is the textbook parallel code phase search. For
+each PRN and each Doppler bin it corrects the carrier with an NCO, then one FFT,
+one multiply and one inverse FFT produce the correlation against the local
+replica at *every code phase at once*. The resulting power is summed
+non-coherently across code periods, and a PRN is declared when the peak of that
+grid stands far enough above its own second peak. It is full precision complex
+arithmetic throughout, and its cost is dominated by the transforms: one pair per
+PRN, Doppler bin and code period.
+
+**The HdCam classifier** (`hdcam_acq`) replaces the correlation with a memory
+lookup. The codebook holds one row per (PRN, CFO) hypothesis, quantised to one
+bit per component, so a row is the carrier phase of each sample rounded to a
+quadrant. A query is the same quantisation of one code period of input, and the
+CAM returns every row within a Hamming distance threshold in a single search — so
+the *PRN and Doppler* dimensions are the ones resolved in parallel here, not code
+phase. Code phase comes from sliding the query window, carrier phase from the
+four quarter turns a 1-bit sample can express, accumulation from voting across
+code periods, and the final ranking from bisecting the CAM threshold to recover
+each survivor's distance.
+
+The trade is arithmetic for memory. The FFT needs multipliers and transforms but
+loses nothing to quantisation; the HdCam needs neither, but keeps only the sign of
+each sample (about 2 dB) and only eight carrier phases (about another 2.5 dB).
+Measured on identical scenarios at `n_codes=10`, the reference works down to
+38 dB-Hz and the HdCam classifier to 40 dB-Hz.
+
+| | FFT reference | 1-bit HdCam |
+|---|---|---|
+| parallel in | code phase | PRN and CFO |
+| serial in | PRN, CFO | code phase |
+| arithmetic | complex, full precision | Hamming distance on bits |
+| detection statistic | peak to second peak ratio | votes, then distance |
+| sensitivity (n_codes=10) | 38 dB-Hz | 40 dB-Hz |
+
+Note that in this repository the CAM is *simulated* one lookup at a time, which
+makes the HdCam path some two orders of magnitude slower per acquisition. That
+ordering is an artefact of the simulation: in hardware the search is the single
+parallel primitive, and it is the reason the approach is interesting at all.
+
 ## Generating labelled test signals
 
 `signal_gen` is the single entry point. Both backends return a fully labelled
