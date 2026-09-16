@@ -10,6 +10,11 @@ Doppler and code phase, and nothing is scored against another classifier's
 opinion. C/N0 is a sweep rather than a single value, because the useful answer is
 the point at which a classifier stops working, not its score at one operating
 point.
+
+score_events is the vocabulary the family study counts in, and calibrate shares
+it: a satellite reported at the wrong Doppler is a miss and a false alarm at
+once, because a receiver handed the wrong cell searches it and finds nothing.
+The older ScenarioScore counts the same acquisition without that distinction.
 """
 
 import datetime
@@ -175,6 +180,106 @@ def _rmse(errors) -> float:
     return float(np.sqrt(np.mean(np.square(errors)))) if len(errors) else 0.0
 
 
+@dataclass(frozen=True)
+class AcquisitionEvents:
+    """One acquisition, classified into the events P_d and P_fa are built from.
+
+    A wrong fix is counted twice on purpose, as a miss and as a false alarm. A
+    receiver handed the right PRN at the wrong Doppler searches a cell that holds
+    nothing, which costs it more than being told the satellite is absent.
+    """
+
+    n_satellites: int  # Satellites present and inside the configuration
+    n_found: int  # Of those, reported within both tolerances
+    n_wrong_fix: int  # Reported, but outside one of them
+    n_absent_prns: int  # Configured PRNs the record does not contain
+    n_false_prns: int  # Of those, reported anyway
+    found_cn0_dbhz: tuple[float, ...] = ()  # Per satellite found
+    missed_cn0_dbhz: tuple[float, ...] = ()  # Per satellite missed
+    doppler_errors_hz: tuple[float, ...] = ()  # Per satellite reported
+    code_phase_errors: tuple[int, ...] = ()  # Per satellite reported, in samples
+
+    @property
+    def n_missed(self) -> int:
+        """Satellites not found, wrong fixes included."""
+        return self.n_satellites - self.n_found
+
+    @property
+    def n_false_alarms(self) -> int:
+        """False alarms of both kinds, absent PRNs and wrong fixes."""
+        return self.n_false_prns + self.n_wrong_fix
+
+
+def score_events(
+    scenario: Scenario,
+    results: list,
+    code_phase_tolerance: int = 1,
+    doppler_bins: float = 1.0,
+) -> AcquisitionEvents:
+    """Classifies one acquisition into the events of the study.
+
+    Doppler is compared against the satellite's true frequency rather than
+    against the grid bin it snaps to, and the tolerance is a whole bin. A
+    simulated satellite sits off grid, so one at a bin edge is legitimately
+    reported in either neighbour and half a bin would fail it for being right.
+
+    Args:
+        scenario (Scenario): The record and its truth.
+        results (list): What the classifier returned, a list of PrnResult.
+        code_phase_tolerance (int): Samples of code phase error to forgive.
+        doppler_bins (float): Bins of Doppler error to forgive.
+
+    Returns:
+        AcquisitionEvents: The counts and the per satellite errors.
+    """
+    config = scenario.config
+    present = {
+        satellite.prn: satellite
+        for satellite in scenario.truth
+        if satellite.prn in config.prn_list
+    }
+    reported = {result.prn: result for result in results}
+    doppler_tolerance = doppler_bins * config.doppler_step_hz
+
+    n_found = n_wrong_fix = 0
+    found_cn0: list[float] = []
+    missed_cn0: list[float] = []
+    doppler_errors: list[float] = []
+    code_phase_errors: list[int] = []
+    for prn, satellite in present.items():
+        result = reported.get(prn)
+        if result is None:
+            missed_cn0.append(satellite.cn0_dbhz)
+            continue
+        doppler_error = result.doppler_hz - satellite.doppler_hz
+        phase_error = code_phase_error(
+            result.code_phase, satellite.code_phase, config.samples_per_code
+        )
+        doppler_errors.append(doppler_error)
+        code_phase_errors.append(phase_error)
+        if abs(doppler_error) <= doppler_tolerance and phase_error <= (
+            code_phase_tolerance
+        ):
+            n_found += 1
+            found_cn0.append(satellite.cn0_dbhz)
+        else:
+            n_wrong_fix += 1
+            missed_cn0.append(satellite.cn0_dbhz)
+
+    absent = [prn for prn in config.prn_list if prn not in present]
+    return AcquisitionEvents(
+        n_satellites=len(present),
+        n_found=n_found,
+        n_wrong_fix=n_wrong_fix,
+        n_absent_prns=len(absent),
+        n_false_prns=sum(prn in reported for prn in absent),
+        found_cn0_dbhz=tuple(found_cn0),
+        missed_cn0_dbhz=tuple(missed_cn0),
+        doppler_errors_hz=tuple(doppler_errors),
+        code_phase_errors=tuple(code_phase_errors),
+    )
+
+
 def code_phase_error(reported: int, expected: int, samples_per_code: int) -> int:
     """The code phase error, taking the shorter way round the code period.
 
@@ -244,6 +349,19 @@ def score_scenario(
     )
 
 
+def sky_start_time(index: int) -> str:
+    """The scenario start that fixes which constellation the simulator builds.
+
+    Args:
+        index (int): Which scenario of the sweep this is.
+
+    Returns:
+        str: A start time as the simulator's "YYYY/MM/DD,hh:mm:ss".
+    """
+    start = SIM_BASE_TIME + index * SCENARIO_SPACING
+    return start.strftime("%Y/%m/%d,%H:%M:%S")
+
+
 def build_scenario(
     classifier: GpsL1AcqClassifier,
     eval_config: EvalConfig,
@@ -269,7 +387,6 @@ def build_scenario(
             cn0_dbhz=cn0_dbhz,
             seed=seed,
         )
-    start = SIM_BASE_TIME + index * SCENARIO_SPACING
     return generate_from_sim(
         classifier.config,
         latitude_deg=eval_config.latitude_deg,
@@ -277,12 +394,14 @@ def build_scenario(
         height_m=eval_config.height_m,
         cn0_dbhz=cn0_dbhz,
         seed=seed,
-        start_time=start.strftime("%Y/%m/%d,%H:%M:%S"),
+        start_time=sky_start_time(index),
     )
 
 
 def evaluate(
-    classifier: GpsL1AcqClassifier, eval_config: EvalConfig
+    classifier: GpsL1AcqClassifier,
+    eval_config: EvalConfig,
+    scenarios=None,
 ) -> EvaluationReport:
     """Runs a classifier over a sweep of scenarios and measures how it did.
 
@@ -291,6 +410,9 @@ def evaluate(
             it carries defines the record the scenarios are built to.
         eval_config (EvalConfig): How many scenarios, at what C/N0, from where,
             and whether to show a progress bar.
+        scenarios (ScenarioBank | None): Records built once and handed to every
+            classifier, so a comparison is over identical input. None builds a
+            fresh scenario per point, which is the older behaviour.
 
     Returns:
         EvaluationReport: One PointMetrics per C/N0 of the sweep.
@@ -313,11 +435,14 @@ def evaluate(
         bar.set_postfix_str(f"{cn0_dbhz:.0f} dB-Hz")
         scores = []
         for index in range(eval_config.n_scenarios):
+            scenario = (
+                scenarios.get(cn0_dbhz, index)
+                if scenarios is not None
+                else build_scenario(classifier, eval_config, cn0_dbhz, index)
+            )
             scores.append(
                 score_scenario(
-                    classifier,
-                    build_scenario(classifier, eval_config, cn0_dbhz, index),
-                    eval_config.code_phase_tolerance,
+                    classifier, scenario, eval_config.code_phase_tolerance
                 )
             )
             bar.update(1)

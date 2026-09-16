@@ -16,8 +16,11 @@ from hdcam_gps.evaluate import (
     build_scenario,
     code_phase_error,
     evaluate,
+    score_events,
     score_scenario,
+    sky_start_time,
 )
+from hdcam_gps.scenarios import ScenarioBank
 from hdcam_gps.fft_acq import FftAcqClassifier
 from hdcam_gps.signal_gen import SatelliteTruth, generate_synthetic
 
@@ -310,3 +313,142 @@ def test_accuracy_falls_away_as_the_signal_weakens():
     assert strong.accuracy == 1.0
     assert weak.accuracy < strong.accuracy
     assert report.sensitivity_cn0_dbhz(0.9) == 60.0
+
+
+# --------------------------------------------------------------------------
+# score_events - the vocabulary the family study counts in
+# --------------------------------------------------------------------------
+
+
+def test_a_satellite_reported_correctly_is_found():
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    events = score_events(scenario, scenario.expected_results())
+    assert events.n_satellites == 2
+    assert events.n_found == 2
+    assert events.n_wrong_fix == 0
+    assert events.n_missed == 0
+    assert events.n_false_alarms == 0
+
+
+def test_a_satellite_not_reported_is_a_miss_and_not_a_false_alarm():
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    events = score_events(scenario, [])
+    assert events.n_found == 0
+    assert events.n_missed == 2
+    assert events.n_false_alarms == 0
+    assert sorted(events.missed_cn0_dbhz) == [50.0, 50.0]
+
+
+def test_a_wrong_doppler_is_counted_as_a_miss_and_as_a_false_alarm():
+    # A receiver handed the right PRN in the wrong cell searches it and finds
+    # nothing, which costs it more than being told the satellite is absent.
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    reported = [
+        PrnResult(prn=1, doppler_hz=-1000.0, code_phase=100),
+        PrnResult(prn=7, doppler_hz=-500.0, code_phase=700),
+    ]
+    events = score_events(scenario, reported)
+    assert events.n_found == 1
+    assert events.n_wrong_fix == 1
+    assert events.n_missed == 1
+    assert events.n_false_alarms == 1
+
+
+def test_a_wrong_code_phase_is_counted_the_same_way():
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    reported = [PrnResult(prn=1, doppler_hz=500.0, code_phase=400)]
+    events = score_events(scenario, reported)
+    assert events.n_wrong_fix == 1
+    assert events.n_false_alarms == 1
+
+
+@pytest.mark.parametrize(
+    ("offset_hz", "found"), [(0.0, True), (500.0, True), (1000.0, False)]
+)
+def test_a_doppler_one_bin_off_is_found_and_two_bins_off_is_not(offset_hz, found):
+    # The tolerance is a whole bin, not half of one: a simulated satellite sits
+    # off grid, so one at a bin edge is legitimately reported in either
+    # neighbour.
+    config = make_config()
+    scenario = generate_synthetic(
+        config,
+        [SatelliteTruth(prn=1, doppler_hz=-500.0, code_phase=100, cn0_dbhz=50.0)],
+        add_noise=False,
+    )
+    reported = [PrnResult(prn=1, doppler_hz=-500.0 + offset_hz, code_phase=100)]
+    assert (score_events(scenario, reported).n_found == 1) is found
+
+
+def test_an_absent_prn_reported_is_a_false_alarm():
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    reported = scenario.expected_results() + [
+        PrnResult(prn=19, doppler_hz=0.0, code_phase=0)
+    ]
+    events = score_events(scenario, reported)
+    assert events.n_absent_prns == 1
+    assert events.n_false_prns == 1
+    assert events.n_false_alarms == 1
+    assert events.n_found == 2
+
+
+def test_a_satellite_outside_the_configuration_is_neither_counted_nor_expected():
+    config = make_config(prn_list=(1,))
+    scenario = two_satellite_scenario(config)
+    events = score_events(scenario, [PrnResult(prn=1, doppler_hz=500.0, code_phase=100)])
+    assert events.n_satellites == 1
+    assert events.n_absent_prns == 0
+
+
+def test_the_cn0_of_every_satellite_lands_on_one_side_or_the_other():
+    config = make_config()
+    scenario = two_satellite_scenario(config)
+    events = score_events(scenario, [scenario.expected_results()[0]])
+    assert len(events.found_cn0_dbhz) + len(events.missed_cn0_dbhz) == 2
+
+
+# --------------------------------------------------------------------------
+# evaluate over a prepared bank
+# --------------------------------------------------------------------------
+
+
+def test_a_bank_supplies_the_records_instead_of_the_backend():
+    config = make_config()
+    sweep = EvalConfig(
+        n_scenarios=2,
+        cn0_dbhz=(48.0,),
+        n_satellites=1,
+        progress=False,
+    )
+    bank = ScenarioBank.build(config, sweep)
+    classifier = StubClassifier(config, [])
+
+    evaluate(classifier, sweep, scenarios=bank)
+    assert classifier.calls == 2
+
+
+def test_two_classifiers_given_one_bank_see_the_same_records():
+    config = make_config()
+    sweep = EvalConfig(
+        n_scenarios=2, cn0_dbhz=(48.0,), n_satellites=1, progress=False
+    )
+    bank = ScenarioBank.build(config, sweep)
+    seen: list[np.ndarray] = []
+
+    class RecordingClassifier(StubClassifier):
+        def _acquire(self, samples):
+            seen.append(samples)
+            return super()._acquire(samples)
+
+    evaluate(RecordingClassifier(config, []), sweep, scenarios=bank)
+    evaluate(RecordingClassifier(config, []), sweep, scenarios=bank)
+    assert seen[0] is seen[2] and seen[1] is seen[3]
+
+
+def test_sky_start_times_are_spaced_and_distinct():
+    assert sky_start_time(0) != sky_start_time(1)
+    assert sky_start_time(0).startswith("2022/01/01")

@@ -13,7 +13,7 @@ from hdcam_gps.acq_base import AcqConfig, PrnResult
 from hdcam_gps.ca_code import sampled_ca_code
 from hdcam_gps.fft_acq import FftAcqClassifier
 from hdcam_gps.fft_acq import FftAcqClassifier as _Reference
-from hdcam_gps.gps_sdr_sim import sources_checked_out
+from hdcam_gps.gps_sdr_sim import simulate, sources_checked_out
 from hdcam_gps.signal_gen import (
     NAV_BIT_PERIOD_S,
     SatelliteTruth,
@@ -21,9 +21,11 @@ from hdcam_gps.signal_gen import (
     amplitude_for_cn0,
     generate_from_sim,
     generate_synthetic,
+    measure_cn0_dbhz,
     nav_data_bits,
     random_scenario,
     satellite_signal,
+    scenario_from_record,
     snap_to_doppler_grid,
 )
 
@@ -470,3 +472,133 @@ def test_matches_tolerance_wraps_around_the_code_period():
     )
     last = config.samples_per_code - 1  # one sample before zero, circularly
     assert scenario.matches([PrnResult(1, 0.0, last)], code_phase_tolerance=1)
+
+
+# --------------------------------------------------------------------------
+# measure_cn0_dbhz - the label the simulator cannot supply
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("cn0_dbhz", [30.0, 38.0, 45.0, 52.0])
+def test_the_estimator_recovers_a_synthetic_satellite(cn0_dbhz):
+    # amplitude_for_cn0 put the satellite there, so this is that function run
+    # backwards and has to agree with it.
+    config = make_config()
+    satellite = SatelliteTruth(19, 1234.0, 77, cn0_dbhz=cn0_dbhz)
+    scenario = generate_synthetic(config, [satellite], add_noise=False, seed=0)
+    measured = measure_cn0_dbhz(
+        scenario.samples,
+        config.fs_hz,
+        satellite.prn,
+        satellite.doppler_hz,
+        satellite.code_phase,
+    )
+    assert measured == pytest.approx(cn0_dbhz, abs=0.2)
+
+
+def test_the_estimator_holds_up_in_a_crowd_with_navigation_data():
+    # Cross correlation from the other four satellites is the error, and a
+    # navigation bit transition costs one code period of the median.
+    config = make_config()
+    satellites = [
+        SatelliteTruth(1, -3000.0, 10, cn0_dbhz=48.0),
+        SatelliteTruth(7, 500.0, 512, cn0_dbhz=42.0),
+        SatelliteTruth(19, 2200.0, 900, cn0_dbhz=44.0),
+        SatelliteTruth(12, 0.0, 300, cn0_dbhz=46.0),
+        SatelliteTruth(30, 4100.0, 200, cn0_dbhz=41.0),
+    ]
+    scenario = generate_synthetic(
+        config, satellites, add_noise=False, nav_data=True, seed=1
+    )
+    for satellite in satellites:
+        measured = measure_cn0_dbhz(
+            scenario.samples,
+            config.fs_hz,
+            satellite.prn,
+            satellite.doppler_hz,
+            satellite.code_phase,
+        )
+        assert measured == pytest.approx(satellite.cn0_dbhz, abs=0.3)
+
+
+@pytest.mark.parametrize("label_error", [-1, 0, 1])
+def test_the_estimator_searches_the_code_phase_the_label_rounded(label_error):
+    # gps_sdr_sim.labels rounds a fractional code phase to a sample, and at one
+    # sample per chip a correlation one chip off reads a sidelobe instead.
+    config = make_config()
+    satellite = SatelliteTruth(19, 0.0, 77, cn0_dbhz=45.0)
+    scenario = generate_synthetic(config, [satellite], add_noise=False, seed=0)
+    measured = measure_cn0_dbhz(
+        scenario.samples,
+        config.fs_hz,
+        satellite.prn,
+        satellite.doppler_hz,
+        satellite.code_phase + label_error,
+    )
+    assert measured == pytest.approx(45.0, abs=0.2)
+
+
+def test_a_code_phase_the_search_window_cannot_reach_reads_low():
+    config = make_config()
+    satellite = SatelliteTruth(19, 0.0, 77, cn0_dbhz=45.0)
+    scenario = generate_synthetic(config, [satellite], add_noise=False, seed=0)
+    assert (
+        measure_cn0_dbhz(
+            scenario.samples, config.fs_hz, 19, 0.0, 77 + 40, search_samples=0
+        )
+        < 30.0
+    )
+
+
+def test_the_estimator_reports_nothing_for_silence():
+    config = make_config()
+    samples = np.zeros(config.samples_per_acquisition, dtype=complex)
+    assert measure_cn0_dbhz(samples, config.fs_hz, 1, 0.0, 0) == float("-inf")
+
+
+def test_the_estimator_needs_a_code_period():
+    with pytest.raises(AssertionError):
+        measure_cn0_dbhz(np.zeros(4, dtype=complex), 204.6e3, 1, 0.0, 0)
+
+
+# --------------------------------------------------------------------------
+# scenario_from_record - the simulator run and the scaling, pulled apart
+# --------------------------------------------------------------------------
+
+
+@needs_simulator
+def test_generate_from_sim_is_simulate_then_scenario_from_record():
+    config = sim_config()
+    record = simulate(
+        fs_hz=config.fs_hz,
+        duration_s=config.samples_per_acquisition / config.fs_hz,
+    )
+    composed = scenario_from_record(config, record, cn0_dbhz=45.0, add_noise=False)
+    whole = generate_from_sim(config, cn0_dbhz=45.0, add_noise=False)
+    assert composed.truth == whole.truth
+    assert np.allclose(composed.samples, whole.samples)
+
+
+@needs_simulator
+def test_each_simulated_satellite_carries_its_own_measured_cn0():
+    # The record average is not any satellite's figure: path loss and the
+    # receiver antenna pattern spread one sky over several dB.
+    config = sim_config()
+    scenario = generate_from_sim(config, cn0_dbhz=45.0, add_noise=False)
+    values = sorted(satellite.cn0_dbhz for satellite in scenario.truth)
+    assert len(set(values)) == len(values)
+    assert 2.0 < values[-1] - values[0] < 20.0
+
+
+@needs_simulator
+def test_one_record_serves_two_scalings_six_dB_apart():
+    config = sim_config()
+    record = simulate(
+        fs_hz=config.fs_hz,
+        duration_s=config.samples_per_acquisition / config.fs_hz,
+    )
+    loud = scenario_from_record(config, record, cn0_dbhz=48.0, add_noise=False)
+    quiet = scenario_from_record(config, record, cn0_dbhz=42.0, add_noise=False)
+    for strong, weak in zip(loud.truth, quiet.truth):
+        assert strong.prn == weak.prn
+        assert strong.cn0_dbhz - weak.cn0_dbhz == pytest.approx(6.0, abs=0.2)

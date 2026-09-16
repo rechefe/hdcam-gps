@@ -13,6 +13,12 @@ site:
   a fractional code phase there, which an acquisition can only answer to the
   sample, so compare with matches rather than with equality.
 
+The one label the simulator cannot supply is C/N0, so measure_cn0_dbhz reads it
+off the clean record per satellite. It has to be per satellite: path loss and the
+receiver antenna pattern spread one simulated sky over about 8 dB, and the
+cn0_dbhz a record was scaled to is the average of that, not the figure any one
+satellite sits at.
+
 Neither backend ever labels a record with a classifier. A truth measured by one
 acquisition cannot be used to score another: the classifier that produced it
 would score perfectly by definition, and any blind spot the two share would be
@@ -24,9 +30,9 @@ from pathlib import Path
 
 import numpy as np
 
-from hdcam_gps.acq_base import AcqConfig, PrnResult
+from hdcam_gps.acq_base import CODE_PERIOD_S, AcqConfig, PrnResult
 from hdcam_gps.ca_code import sampled_ca_code
-from hdcam_gps.gps_sdr_sim import DEFAULT_RINEX, labels, simulate
+from hdcam_gps.gps_sdr_sim import DEFAULT_RINEX, SimulatedRecord, labels, simulate
 
 NAV_BIT_PERIOD_S: float = 20e-3  # A navigation data bit lasts 20 code periods
 
@@ -272,6 +278,143 @@ def random_scenario(
     )
 
 
+def measure_cn0_dbhz(
+    samples: np.ndarray,
+    fs_hz: float,
+    prn: int,
+    doppler_hz: float,
+    code_phase: int,
+    search_samples: int = 1,
+) -> float:
+    """Reads one satellite's C/N0 out of a noiseless record.
+
+    This is the inverse of amplitude_for_cn0, on the same unit noise convention:
+    correlating against the satellite's own replica over one code period returns
+    its amplitude, and C/N0 is that amplitude squared times the sampling rate.
+    The correlation is coherent within a code period and not across them, so a
+    navigation bit transition costs one period rather than the whole estimate,
+    and the median over the periods rides out the one that flipped.
+
+    The code phase is searched over a window rather than trusted, because
+    gps_sdr_sim.labels rounds a fractional code phase to the nearest sample and
+    at 1.023 MHz one sample is one chip. Correlating at a phase one chip off
+    reads the autocorrelation sidelobe instead of the peak: measured on a real
+    sky, seven of nine satellites came back 15 to 25 dB low, and PRN 10 at 68
+    degrees elevation read weaker than PRN 26 at 12. Over the window the answers
+    agree with the simulator's own path loss and antenna gain to 0.6 dB.
+
+    Cross correlation from the rest of the constellation is the remaining error.
+    It is about -24 dB, so it moves a strong satellite by under 0.1 dB and a
+    satellite 25 dB below the strongest by about 2 dB.
+
+    Args:
+        samples (np.ndarray): A noiseless record, on the unit noise convention.
+        fs_hz (float): The sampling frequency in Hz.
+        prn (int): The PRN number of the satellite to measure.
+        doppler_hz (float): Its carrier Doppler in Hz.
+        code_phase (int): Its code phase in samples.
+        search_samples (int): Samples either side of code_phase to try. Zero
+            takes the code phase as given.
+
+    Returns:
+        float: The carrier to noise density ratio in dB-Hz.
+    """
+    samples_per_code = int(fs_hz * CODE_PERIOD_S)
+    n_periods = len(samples) // samples_per_code
+    assert n_periods >= 1, "A C/N0 estimate needs at least one code period."
+    assert search_samples >= 0, "The search window cannot be negative."
+
+    n_used = n_periods * samples_per_code
+    time_s = np.arange(n_used) / fs_hz
+    carrier = np.exp(2j * np.pi * doppler_hz * time_s)
+    wiped = (samples[:n_used] * np.conj(carrier)).reshape(n_periods, samples_per_code)
+    code = sampled_ca_code(prn, fs_hz)
+
+    amplitude = 0.0
+    for offset in range(-search_samples, search_samples + 1):
+        replica = np.roll(code, (code_phase + offset) % samples_per_code)
+        products = wiped * replica
+        amplitude = max(amplitude, float(np.median(np.abs(products.mean(axis=1)))))
+    if amplitude <= 0:
+        return float("-inf")
+    return float(10.0 * np.log10(amplitude**2 * fs_hz))
+
+
+def scenario_from_record(
+    config: AcqConfig,
+    record: SimulatedRecord,
+    cn0_dbhz: float = 45.0,
+    add_noise: bool = True,
+    seed: int | None = None,
+    offset: int = 0,
+) -> Scenario:
+    """Turns a simulated record into a labelled Scenario, without re-simulating.
+
+    The record depends only on the place, the time and the sampling rate, while
+    the C/N0 and the noise are applied here. Splitting them is what lets one
+    simulator run serve a whole sweep: see sim_cache and scenarios.
+
+    The truth is the simulator's own channel state, reported by the patch under
+    third_party/patches and read straight out of its output. The simulator places
+    a satellite at a fractional code phase, while an acquisition can only answer
+    in whole samples, so compare with scenario.matches(results,
+    code_phase_tolerance=1) rather than with equality.
+
+    cn0_dbhz scales the whole record, and is not what any one satellite ends up
+    at. The simulator runs with a 0 degree elevation mask and an antenna pattern
+    reaching -31.6 dB at the horizon, so one sky spans more than 20 dB. Each
+    SatelliteTruth therefore carries its own measured value, and cn0_dbhz names
+    only the average the record was scaled to.
+
+    Args:
+        config (AcqConfig): The configuration to build for. Its sampling
+            frequency and length define the record; its PRN list only filters
+            what the scenario reports, not what the sky contains.
+        record (SimulatedRecord): A record from a patched simulator.
+        cn0_dbhz (float): The average per satellite C/N0 to scale the record to.
+        add_noise (bool): Whether to add the unit power complex noise.
+        seed (int | None): Seed of the noise generator.
+        offset (int): First sample of the simulated record to take.
+
+    Returns:
+        Scenario: The record and the constellation that produced it.
+    """
+    n_samples = config.samples_per_acquisition
+    window = record.samples[offset : offset + n_samples]
+    assert len(window) == n_samples, "The simulator returned too short a record."
+
+    # Onto the convention of generate_synthetic: unit noise, calibrated signal.
+    total_power = len(record.prns) * amplitude_for_cn0(cn0_dbhz, config.fs_hz) ** 2
+    measured_power = float(np.mean(np.abs(window) ** 2))
+    if measured_power > 0:
+        window = window * np.sqrt(total_power / measured_power)
+
+    truth = tuple(
+        SatelliteTruth(
+            prn=prn,
+            doppler_hz=doppler_hz,
+            code_phase=code_phase,
+            cn0_dbhz=measure_cn0_dbhz(
+                window, config.fs_hz, prn, doppler_hz, code_phase
+            ),
+        )
+        for prn, (doppler_hz, code_phase) in sorted(labels(record, offset).items())
+    )
+
+    if add_noise:
+        rng = np.random.default_rng(seed)
+        window = window + (
+            rng.normal(scale=np.sqrt(0.5), size=n_samples)
+            + 1j * rng.normal(scale=np.sqrt(0.5), size=n_samples)
+        )
+    return Scenario(
+        samples=window,
+        truth=truth,
+        config=config,
+        noise_sigma=1.0 if add_noise else 0.0,
+    )
+
+
 def generate_from_sim(
     config: AcqConfig,
     latitude_deg: float = 32.0,
@@ -286,21 +429,9 @@ def generate_from_sim(
 ) -> Scenario:
     """Builds a Scenario from a real constellation, via the third party simulator.
 
-    The truth is the simulator's own channel state, reported by the patch under
-    third_party/patches and read straight out of its output. Nothing is measured
-    from the samples and nothing is modelled, so a classifier can be scored
-    against it.
-
-    The simulator places a satellite at a fractional code phase, while an
-    acquisition can only answer in whole samples, so compare with
-    scenario.matches(results, code_phase_tolerance=1) rather than with equality.
-
-    The simulator's record is noiseless and carries an arbitrary scale, so it is
-    rescaled onto the same convention generate_synthetic uses: unit power noise,
-    and a total signal power of n_satellites times the power one satellite would
-    have at cn0_dbhz. The relative powers the simulator computed from path loss
-    survive that rescaling, so cn0_dbhz is the average across the constellation
-    rather than the exact figure of any one satellite.
+    This is simulate followed by scenario_from_record, which is the expensive
+    half followed by the cheap one. A sweep that re-runs it per C/N0 point pays
+    for the same record over and over; scenarios.ScenarioBank does not.
 
     Args:
         config (AcqConfig): The configuration to build for. Its sampling
@@ -319,41 +450,20 @@ def generate_from_sim(
     Returns:
         Scenario: The record and the constellation that produced it.
     """
-    n_samples = config.samples_per_acquisition
     record = simulate(
         latitude_deg=latitude_deg,
         longitude_deg=longitude_deg,
         height_m=height_m,
         fs_hz=config.fs_hz,
-        duration_s=(offset + n_samples) / config.fs_hz,
+        duration_s=(offset + config.samples_per_acquisition) / config.fs_hz,
         rinex=rinex,
         start_time=start_time,
     )
-    window = record.samples[offset : offset + n_samples]
-    assert len(window) == n_samples, "The simulator returned too short a record."
-
-    # Onto the convention of generate_synthetic: unit noise, calibrated signal.
-    total_power = len(record.prns) * amplitude_for_cn0(cn0_dbhz, config.fs_hz) ** 2
-    measured_power = float(np.mean(np.abs(window) ** 2))
-    if measured_power > 0:
-        window = window * np.sqrt(total_power / measured_power)
-
-    truth = tuple(
-        SatelliteTruth(
-            prn=prn, doppler_hz=doppler_hz, code_phase=code_phase, cn0_dbhz=cn0_dbhz
-        )
-        for prn, (doppler_hz, code_phase) in sorted(labels(record, offset).items())
-    )
-
-    if add_noise:
-        rng = np.random.default_rng(seed)
-        window = window + (
-            rng.normal(scale=np.sqrt(0.5), size=n_samples)
-            + 1j * rng.normal(scale=np.sqrt(0.5), size=n_samples)
-        )
-    return Scenario(
-        samples=window,
-        truth=truth,
-        config=config,
-        noise_sigma=1.0 if add_noise else 0.0,
+    return scenario_from_record(
+        config,
+        record,
+        cn0_dbhz=cn0_dbhz,
+        add_noise=add_noise,
+        seed=seed,
+        offset=offset,
     )

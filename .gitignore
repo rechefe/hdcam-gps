@@ -16,3 +16,6 @@ dist/
 
 # Patched build of the vendored simulator
 third_party/build/
+
+# Cached simulator records
+third_party/cache/
