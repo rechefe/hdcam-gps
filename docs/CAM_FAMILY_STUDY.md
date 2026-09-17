@@ -171,6 +171,17 @@ coherent 2046-bit sum with m-of-K binary integration. Real risk: the **hit flood
 acquisition. That is a digital-readout problem, not a CAM problem; score this family
 through the table path only.
 
+**What phase 2 measured, and it is not what this paragraph expected.** The m-of-K rule is
+implemented and does combine segments, but the loss it was meant to address is not the one
+that matters. A 64-sample segment is 62 µs, and the frequency resolution of a window that
+long is 1/T = 16 kHz — the **entire ±5 kHz search fits inside one resolution cell**. A
+segment of the right PRN at the right code phase therefore sits at distance **zero** from
+every Doppler bin, measured at every threshold, and counting segments cannot separate bins
+when they all match. This family is a PRN and code-phase detector, exactly like the
+differential one, and needs the same second stage. Nothing about m-of-K, the threshold or
+the ranking changes that; K would have to reach ~16 segments *coherently summed* to
+recover frequency resolution, and a CAM cannot sum.
+
 ### Differential — `diff_acq.py`, `DifferentialHdCamClassifier(lag_samples=L)`
 Rows and queries hold `quantize_iq(x[n]·conj(x[n−L]))`. Carrier phase cancels: no rotations,
 no stored phases. Two problems, both found during design and both worth stating before any
@@ -185,6 +196,15 @@ code is written:
    SNR, so the noise x noise penalty is on the order of **20 dB**.
 
 Prediction: it dies in the phase-1 screen. Build the screen, not the classifier, first.
+
+**Phase 2 built the second stage** (`refine.py`), because the segmented family turned out
+to need it too. `DopplerRefiner` sweeps the Doppler grid over the record at the code phase
+the CAM named, coherently within a code period and non-coherently across them, on the 1-bit
+stream with the same quadrant mixer `code_only_acq` uses — so the front end stays 1-bit.
+`RefinedClassifier` composes a blind family with it. Measured: the 1-bit sweep lands on the
+right bin on clean records and at 45 dB-Hz, and costs ~3 300× less than correlating the
+whole search space, because it only ever runs on the cells the CAM already found. It is
+still a correlator, and `RefinerCost` exists so that the comparison says so out loud.
 
 ---
 
@@ -381,8 +401,8 @@ record-average scaling only as the sampling design. No simulator patch.
 | phase | work | new tests |
 |---|---|---|
 | 0 **(done)** | `cam_acq.py`, `hdcam_packed.py`, `cam_cost.py`, `sim_cache.py`, `scenarios.py`; per-satellite C/N0 in `scenario_from_record` (§4.2); refactor `hdcam_acq.py` onto the base; generalise `calibrate`; `evaluate(..., scenarios=)`; edit CLAUDE.md | `test_cam_acq.py`, `test_cam_cost.py`, `test_hdcam_packed.py`, `test_scenarios.py`, `test_sim_cache.py`, C/N0-estimator test in `test_signal_gen.py` |
-| 1 | **cheap screen** — §4.6 `d'(C/N0)` and `T(x)` per family on set A, from distance tables only. Minimal codebook+query per family, no classifier. Minutes each. | `notebooks/family_screen.ipynb` |
-| 2 | full classifiers for survivors, in order: code-only, thermometer, segmented, differential | `test_code_only_acq.py`, `test_thermometer_acq.py`, `test_segmented_acq.py`, `test_diff_acq.py` |
+| 1 **(done)** | **cheap screen** — §4.6 `d'(C/N0)` and `T(x)` per family on set A, from distance tables only. Run by `scripts/run_family_screen.py` into `docs/screen_results.json`. | `notebooks/family_screen.ipynb`, `test_screen.py` |
+| 2 **(done)** | full classifiers for survivors, in order: code-only, thermometer, segmented, differential; the m-of-K rule generalised into the shared vote; `refine.py`, the second stage both Doppler-blind families need | `test_code_only_acq.py`, `test_thermometer_acq.py`, `test_segmented_acq.py`, `test_diff_acq.py`, `test_refine.py` |
 | 3 | §4.5 calibration on set A for every survivor **and the FFT reference**, backgrounded; freeze the settings in a checked-in JSON | — |
 | 4 | `src/hdcam_gps/compare.py` — `compare(classifiers, scenarios, target_pfa) -> Comparison` running §4.3, §4.4 and §4.7 on set B and joining them into one table | `notebooks/family_comparison.ipynb` |
 | 5 | README family table replaces the two-classifier table; PROPOSAL step 4 gets the measured numbers | — |

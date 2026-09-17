@@ -83,8 +83,11 @@ sample either way, because `gps_sdr_sim.labels` rounds a fractional phase and at
 1.023 MHz one sample is one chip — correlating at the rounded phase read seven of nine
 satellites 15 to 25 dB low.
 
-**One decision rule, two data paths.** Vote across looks, then rank the survivors by
-distance — `CamAcqClassifier.shortlist_cells` and `rank_cells`, written once.
+**One decision rule, two data paths.** A look votes when at least `min_segments` of a
+hypothesis's rows match; a hypothesis is shortlisted on `min_votes` looks; survivors rank
+by distance — `CamAcqClassifier.shortlist_cells` and `rank_cells`, written once.
+`RowIndex.hypothesis` is what groups rows, and with one row per hypothesis and
+`min_segments=1` — every family but the segmented one — it is just "the look matched".
 `search_mode="cam"` gets the hits from one `search_cam` per query and measures a survivor
 with `tightest_match`, which is what the hardware can do; `search_mode="table"` reads the
 same hits off a GEMM `distance_table`, which is the only affordable way to replay a grid
@@ -103,8 +106,14 @@ for bit.
 | `hdcam_packed.py` | The same CAM answering from `np.packbits`, 12x faster |
 | `cam_acq.py` | `CamAcqClassifier`: the shared codebook/query hooks and the one decision rule |
 | `cam_cost.py` | `CamCost`, `CountingHdCam`: area, energy, latency and tolerance fraction, counted |
+| `screen.py` | §4.6 from distance tables only: `D_true`, `D_wrong`, `d'` and the required tolerance |
 | `fft_acq.py` | FFT parallel code-phase search, the reference classifier |
 | `hdcam_acq.py` | 1-bit HdCam family: codebook, query rotations, the baseline of the study |
+| `code_only_acq.py` | The CFO moves into the query: 64 rows, a quadrant mixer, 21x the searches |
+| `thermometer_acq.py` | Unary levels, so Hamming distance is L1 distance; its chance floor is measured |
+| `segmented_acq.py` | 128-bit sub-rows, voted m-of-K; Doppler-blind, see below |
+| `diff_acq.py` | Delay-multiply, so the carrier cancels; Doppler-blind by construction |
+| `refine.py` | `DopplerRefiner`, the costed second stage the two Doppler-blind families need |
 | `signal_gen.py` | Labelled `Scenario` generation, both backends, per-satellite C/N0 |
 | `gps_sdr_sim.py` | Driver for the vendored simulator: build, run, parse |
 | `sim_cache.py` | Caches a simulator record, which does not depend on C/N0 |
@@ -113,3 +122,12 @@ for bit.
 | `calibrate.py` | Searches a setting against a target operating point, for a family or the FFT reference |
 
 Tests mirror sources 1:1 as `tests/test_<module>.py`, so a change has an obvious test home.
+
+## Two families cannot report a Doppler
+
+`segmented_acq` and `diff_acq` name a PRN and a code phase and nothing else, for different
+reasons that are both arithmetic rather than tuning. A 64-sample segment is 62 µs, whose
+frequency resolution is 1/T = 16 kHz, so the whole ±5 kHz search sits in one cell; the
+delay-multiply turns a Doppler into one constant phase that 1 bit resolves into four
+classes. **Wrap them in `refine.RefinedClassifier` before scoring them**, or §4.1 counts
+every detection as a wrong fix, which is a miss and a false alarm at once.
