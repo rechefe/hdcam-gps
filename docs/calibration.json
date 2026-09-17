@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "fs_hz": 1023000.0,
+    "n_prn": 32,
+    "doppler_min_hz": -5000.0,
+    "doppler_max_hz": 5000.0,
+    "doppler_step_hz": 500.0,
+    "n_codes": 10,
+    "n_calibration_skies": 20,
+    "scalings_dbhz": [
+      54.0,
+      51.0,
+      48.0,
+      45.0,
+      42.0,
+      39.0,
+      36.0
+    ],
+    "n_records": 140,
+    "target_pfa": 0.01,
+    "picked_on": "measured",
+    "band_dbhz": [
+      38.0,
+      42.0
+    ],
+    "code_phase_tolerance": 1,
+    "doppler_bins": 1.0,
+    "seconds": 50.775889130999985,
+    "set": "A (calibration skies); nothing here is measured on set B",
+    "not_calibrated": {
+      "differential": "killed at phase 1 by rule (i): d' of 1.15 in the 45 dB-Hz bin is below half the baseline's 6.25"
+    },
+    "no_setting_met_the_target": []
+  },
+  "settings": {
+    "differential": null,
+    "fft reference": {
+      "family": "fft reference",
+      "n_records": 140,
+      "target_pfa": 0.01,
+      "hd_threshold": null,
+      "min_votes": null,
+      "peak_ratio": 2.0,
+      "pfa": 0.007142857142857143,
+      "pfa_upper": 0.033435030439217535,
+      "pfa_per_prn": 0.00033534540576794097,
+      "n_wrong_fix": 0,
+      "pd": 0.829105473965287,
+      "pd_in_band": 0.9854545454545455,
+      "n_satellites": 1498,
+      "n_band_satellites": 275
+    }
+  }
+}
