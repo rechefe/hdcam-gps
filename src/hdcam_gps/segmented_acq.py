@@ -22,11 +22,16 @@ What is paid for instead is two things.
   pieces, worth 1 to 2 dB. The tolerance **fraction** does not improve, because
   the signal to noise ratio sets it; only the absolute count falls, and the
   relative spread of the chance floor worsens from 1.1 % of the width to 4.4 %.
-* The CFO stops being resolvable by a single sub-row. 64 samples is 62
-  microseconds, over which 500 Hz turns by 11 degrees, so every Doppler bin
-  matches a segment about as well. Winning that back is what the m-of-K rule
-  across segments has to do, and until it exists this family reports whichever
-  bin the ranking reaches first.
+* **The CFO stops being resolvable at all, and no decision rule wins it back.**
+  A 64 sample window is 62 microseconds, whose frequency resolution is 1/T =
+  16 kHz. The entire +-5 kHz search fits inside one resolution cell, so a
+  segment of the right PRN at the right code phase matches every Doppler bin
+  equally - measured at distance zero for all of them, at every threshold. The
+  m-of-K rule counts segments and they all match, so counting cannot separate
+  bins either. Like the differential family, this one is a PRN and code phase
+  detector, and a receiver would need a second stage to finish the job. Section
+  3 expected m-of-K to buy back 1 to 2 dB of integration loss; the loss it does
+  not touch is this one.
 * The readout floods. At a 47 % tolerance on 128 bits about a quarter of the
   rows fall inside every search, so an acquisition produces hits by the hundred
   million. That is a digital readout problem rather than a CAM problem, and it
@@ -38,11 +43,14 @@ hypothesis is tested on 94 % of its energy, and every code phase stays reachable
 because the queries slide over all of them.
 """
 
+from math import ceil
+
 import numpy as np
 
 from hdcam_gps.acq_base import AcqConfig
 from hdcam_gps.ca_code import sampled_ca_code
 from hdcam_gps.cam_acq import (
+    DEFAULT_VOTE_FRACTION,
     QUERY_ROTATIONS,
     CamAcqClassifier,
     QueryIndex,
@@ -66,6 +74,7 @@ class SegmentedHdCamClassifier(CamAcqClassifier):
         segment_bits: int = DEFAULT_SEGMENT_BITS,
         n_codebook_phases: int = DEFAULT_CODEBOOK_PHASES,
         min_votes: int | None = None,
+        min_segments: int | None = None,
         false_alarm_rate: float = 1e-2,
         search_mode: str = "table",
         cam_factory=PackedHdCam,
@@ -81,6 +90,9 @@ class SegmentedHdCamClassifier(CamAcqClassifier):
             n_codebook_phases (int): Carrier phase offsets stored per (PRN, CFO).
             min_votes (int | None): How many of its looks a hypothesis has to
                 match on. None takes a third of them.
+            min_segments (int | None): How many of the K sub-rows have to match
+                inside a look before it votes. None takes a third of them, which
+                is a starting point for calibration rather than an answer.
             false_alarm_rate (float): False detections tolerated per acquisition,
                 used only when hd_threshold is None.
             search_mode (str): "cam" or "table". The default is the table,
@@ -103,6 +115,12 @@ class SegmentedHdCamClassifier(CamAcqClassifier):
         self.n_segments = config.samples_per_code // self.segment_samples
         self.n_codebook_phases = n_codebook_phases
         self.n_columns = segment_bits
+        if min_segments is None:
+            min_segments = max(1, ceil(DEFAULT_VOTE_FRACTION * self.n_segments))
+        assert 1 <= min_segments <= self.n_segments, (
+            f"min_segments must be between 1 and the {self.n_segments} sub-rows "
+            "a hypothesis has."
+        )
         super().__init__(
             config,
             hd_threshold=hd_threshold,
@@ -110,6 +128,7 @@ class SegmentedHdCamClassifier(CamAcqClassifier):
             false_alarm_rate=false_alarm_rate,
             search_mode=search_mode,
             cam_factory=cam_factory,
+            min_segments=min_segments,
         )
 
     @property
@@ -178,15 +197,18 @@ class SegmentedHdCamClassifier(CamAcqClassifier):
 
         Returns:
             RowIndex: Parallel arrays of n_rows entries. The segment offset is
-                what turns a window start into a code phase.
+                what turns a window start into a code phase, and the hypothesis
+                is what groups the K sub-rows the m-of-K rule votes on together.
         """
         rows = np.arange(self.n_rows)
-        hypotheses = rows // self.n_segments // self.n_codebook_phases
-        positions = hypotheses // self.n_doppler_bins
+        hypothesis = rows // self.n_segments
+        triples = hypothesis // self.n_codebook_phases
+        positions = triples // self.n_doppler_bins
         return RowIndex(
             prn=np.array(self.config.prn_list)[positions],
-            doppler_bin=hypotheses % self.n_doppler_bins,
+            doppler_bin=triples % self.n_doppler_bins,
             segment_offset=(rows % self.n_segments) * self.segment_samples,
+            hypothesis=hypothesis,
         )
 
     def query_index(self, n_samples: int | None = None) -> QueryIndex:

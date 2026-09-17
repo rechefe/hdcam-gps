@@ -36,7 +36,7 @@ A family that cannot express itself in those four lines needs a new field here,
 not a second decision rule.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import ceil, comb
 from statistics import NormalDist
 from typing import Iterator, NamedTuple
@@ -70,6 +70,10 @@ class RowIndex:
     prn: np.ndarray  # PRN number of the row
     doppler_bin: np.ndarray  # Doppler bin, or -1 when the query carries it
     segment_offset: np.ndarray  # Samples into the code period the row starts at
+    # Which hypothesis a row serves. Rows sharing an id are the sub-rows of one
+    # hypothesis and are voted on together; None gives every row its own, which
+    # is what every family but the segmented one wants.
+    hypothesis: np.ndarray | None = None
 
 
 @dataclass(frozen=True)
@@ -232,6 +236,7 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         false_alarm_rate: float = DEFAULT_FALSE_ALARM_RATE,
         search_mode: str = "cam",
         cam_factory=PackedHdCam,
+        min_segments: int = 1,
     ):
         """Fixes the vote rule and the threshold, then writes the codebook.
 
@@ -247,6 +252,9 @@ class CamAcqClassifier(GpsL1AcqClassifier):
                 to read the same hits off a precomputed distance table.
             cam_factory: The HdCam class to build. The packed one answers the
                 same question 12 times faster.
+            min_segments (int): How many rows of a hypothesis a look needs
+                before it votes. One is the answer for every family that gives a
+                hypothesis a single row.
         """
         super().__init__(config)
         assert search_mode in ("cam", "table"), 'search_mode is "cam" or "table".'
@@ -254,6 +262,8 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         self._row_cache: RowIndex | None = None
         self._query_cache: dict[int, QueryIndex] = {}
         self._doppler_in_query: bool | None = None
+        assert min_segments >= 1, "A look votes on at least one row."
+        self.min_segments = min_segments
         if min_votes is None:
             min_votes = max(1, ceil(DEFAULT_VOTE_FRACTION * self.n_looks))
         assert 1 <= min_votes <= self.n_looks, (
@@ -375,7 +385,10 @@ class CamAcqClassifier(GpsL1AcqClassifier):
             RowIndex: What each codebook row stands for.
         """
         if self._row_cache is None:
-            self._row_cache = self.row_index()
+            index = self.row_index()
+            if index.hypothesis is None:
+                index = replace(index, hypothesis=np.arange(len(index.prn)))
+            self._row_cache = index
         return self._row_cache
 
     def queries(self, n_samples: int | None = None) -> QueryIndex:
@@ -600,39 +613,77 @@ class CamAcqClassifier(GpsL1AcqClassifier):
     # the one decision rule
     # ----------------------------------------------------------------------
 
-    def _vote_groups(self) -> Iterator[tuple[np.ndarray, np.ndarray]]:
-        """The rows and the per query group index of each vote reduction.
+    def _vote_groups(self) -> Iterator[tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        """The rows of each reduction, and what every query means to them.
 
         Rows that start at different points of the code period read a different
         code phase out of the same query, so they cannot share one reduction.
-        Every family except the segmented one has a single offset and therefore a
-        single group.
+        Every family except the segmented one has a single offset and therefore
+        a single group, and inside a group a hypothesis owns exactly one row.
 
         Yields:
-            tuple[np.ndarray, np.ndarray]: The rows of this reduction, and the
-                group every query votes in.
+            tuple[np.ndarray, np.ndarray, np.ndarray]: The rows of this
+                reduction, the cell each query votes in, and its look.
         """
         rows = self.rows()
         queries = self.queries()
         samples_per_code = self.config.samples_per_code
+        look = queries.start // samples_per_code
         for offset in np.unique(rows.segment_offset):
             which = np.flatnonzero(rows.segment_offset == offset)
+            assert len(np.unique(rows.hypothesis[which])) == which.size, (
+                "A hypothesis owns at most one row per segment offset."
+            )
             code_phase = (queries.start - int(offset)) % samples_per_code
             if self.doppler_is_in_the_query:
                 assert (rows.doppler_bin[which] < 0).all(), (
                     "A Doppler bin comes from the row or from the query, never "
                     "from both."
                 )
-                yield which, queries.doppler_bin * samples_per_code + code_phase
+                yield which, queries.doppler_bin * samples_per_code + code_phase, look
             else:
-                yield which, code_phase
+                yield which, code_phase, look
+
+    @property
+    def n_hypotheses(self) -> int:
+        """Returns how many hypotheses the rows serve, which is n_rows unless
+        a family gives several rows to one."""
+        return int(self.rows().hypothesis.max()) + 1
+
+    @property
+    def n_cell_slots(self) -> int:
+        """Returns how many (Doppler bin, code phase) pairs a vote runs over."""
+        samples_per_code = self.config.samples_per_code
+        if self.doppler_is_in_the_query:
+            return self.n_doppler_bins * samples_per_code
+        return samples_per_code
+
+    @property
+    def n_look_slots(self) -> int:
+        """Returns how many looks the record holds, counting from the first."""
+        starts = self.queries().start
+        if starts.size == 0:
+            return 1
+        return int(starts.max()) // self.config.samples_per_code + 1
+
+    def _first_row_of(self, hypothesis: int) -> int:
+        """The row that stands for a hypothesis in a Cell.
+
+        Args:
+            hypothesis (int): A hypothesis id from the row index.
+
+        Returns:
+            int: Its lowest row, which carries the same PRN and Doppler bin as
+                the rest.
+        """
+        return int(np.flatnonzero(self.rows().hypothesis == hypothesis)[0])
 
     def _cell_of(self, row: int, label: int) -> Cell:
-        """The hypothesis a surviving (row, group) pair stands for.
+        """The hypothesis a surviving (row, cell slot) pair stands for.
 
         Args:
             row (int): The codebook row.
-            label (int): The group index the vote was counted in.
+            label (int): The cell slot the vote was counted in.
 
         Returns:
             Cell: The row, its Doppler bin and its code phase.
@@ -643,65 +694,138 @@ class CamAcqClassifier(GpsL1AcqClassifier):
             return Cell(row, label // samples_per_code, code_phase)
         return Cell(row, int(self.rows().doppler_bin[row]), code_phase)
 
+    def _count_votes(
+        self, matched: np.ndarray, min_segments: int
+    ) -> np.ndarray:
+        """How many looks vote for each cell, under the m-of-K rule.
+
+        A look votes when at least min_segments of a hypothesis's rows matched
+        in it. With one row per hypothesis and min_segments of one - every
+        family but the segmented one - that is just "the look matched".
+
+        Args:
+            matched (np.ndarray): Hits of shape (n_queries, n_rows).
+            min_segments (int): Rows of a hypothesis a look needs.
+
+        Returns:
+            np.ndarray: Votes of shape (n_cell_slots, n_hypotheses).
+        """
+        hypothesis = self.rows().hypothesis
+        shape = (self.n_cell_slots, self.n_look_slots)
+        hits = np.zeros(shape + (self.n_hypotheses,), dtype=np.int16)
+        for which, cell_index, look in self._vote_groups():
+            for low in range(0, which.size, VOTE_ROW_CHUNK):
+                chunk = which[low : low + VOTE_ROW_CHUNK]
+                # (cell, look) is unique per query inside a group, so this is a
+                # scatter rather than an accumulation.
+                scratch = np.zeros(shape + (chunk.size,), dtype=np.int16)
+                scratch[cell_index, look] = matched[:, chunk]
+                hits[:, :, hypothesis[chunk]] += scratch
+        return (hits >= min_segments).sum(axis=1)
+
+    def _best_distances(self, table: np.ndarray) -> np.ndarray:
+        """The closest any query of a cell came, per hypothesis.
+
+        Args:
+            table (np.ndarray): Distances of shape (n_queries, n_rows).
+
+        Returns:
+            np.ndarray: Distances of shape (n_cell_slots, n_hypotheses).
+        """
+        hypothesis = self.rows().hypothesis
+        unreachable = self.n_columns + 1
+        best = np.full(
+            (self.n_cell_slots, self.n_hypotheses), unreachable, dtype=np.int32
+        )
+        for which, cell_index, _ in self._vote_groups():
+            order, first, labels = run_starts(cell_index)
+            for low in range(0, which.size, VOTE_ROW_CHUNK):
+                chunk = which[low : low + VOTE_ROW_CHUNK]
+                reduced = np.minimum.reduceat(table[:, chunk][order], first, axis=0)
+                scratch = np.full(
+                    (self.n_cell_slots, chunk.size), unreachable, dtype=np.int32
+                )
+                scratch[labels] = reduced
+                columns = hypothesis[chunk]
+                best[:, columns] = np.minimum(best[:, columns], scratch)
+        return best
+
     def cells_from_table(
-        self, table: np.ndarray, hd_threshold: int, min_votes: int
+        self,
+        table: np.ndarray,
+        hd_threshold: int,
+        min_votes: int,
+        min_segments: int | None = None,
     ) -> dict[Cell, int]:
         """Every cell reaching min_votes, with the distance of its best look.
 
-        A look that did not match is further away than the threshold, so the
-        minimum over all looks of a surviving cell is its minimum over the looks
-        that did match. The table path can therefore ignore which ones they were.
+        The distance kept is the minimum over every query of the cell, whether
+        or not that query's look voted. Both data paths do the same, so they
+        agree; under the m-of-K rule it is no longer true that a query which did
+        not contribute is further away than the threshold.
 
         Args:
             table (np.ndarray): Distances of shape (n_queries, n_rows).
             hd_threshold (int): The per look threshold to apply.
-            min_votes (int): How many looks have to match.
+            min_votes (int): How many looks have to vote.
+            min_segments (int | None): Rows of a hypothesis a look needs. None
+                takes the classifier's own.
 
         Returns:
             dict[Cell, int]: The best distance of each surviving cell.
         """
+        if min_segments is None:
+            min_segments = self.min_segments
+        votes = self._count_votes(table <= hd_threshold, min_segments)
+        best = self._best_distances(table)
         found: dict[Cell, int] = {}
-        for which, group in self._vote_groups():
-            order, first, labels = run_starts(group)
-            for start in range(0, which.size, VOTE_ROW_CHUNK):
-                chunk = which[start : start + VOTE_ROW_CHUNK]
-                block = table[:, chunk][order]
-                votes = np.add.reduceat(block <= hd_threshold, first, axis=0)
-                best = np.minimum.reduceat(block, first, axis=0)
-                for run, position in zip(*np.nonzero(votes >= min_votes)):
-                    cell = self._cell_of(int(chunk[position]), int(labels[run]))
-                    distance = int(best[run, position])
-                    if distance < found.get(cell, self.n_columns + 1):
-                        found[cell] = distance
+        for label, hypothesis in zip(*np.nonzero(votes >= min_votes)):
+            cell = self._cell_of(self._first_row_of(int(hypothesis)), int(label))
+            found[cell] = int(best[label, hypothesis])
         return found
 
     def shortlist_cells(
-        self, matched: np.ndarray, min_votes: int
+        self, matched: np.ndarray, min_votes: int, min_segments: int | None = None
     ) -> dict[Cell, list[int]]:
         """Every cell reaching min_votes, with the queries that put it there.
 
         Args:
             matched (np.ndarray): Hits of shape (n_queries, n_rows).
-            min_votes (int): How many looks have to match.
+            min_votes (int): How many looks have to vote.
+            min_segments (int | None): Rows of a hypothesis a look needs. None
+                takes the classifier's own.
 
         Returns:
             dict[Cell, list[int]]: The matching query indices of each cell.
         """
+        if min_segments is None:
+            min_segments = self.min_segments
+        votes = self._count_votes(matched, min_segments)
+        survivors = {
+            (int(label), int(hypothesis))
+            for label, hypothesis in zip(*np.nonzero(votes >= min_votes))
+        }
+        if not survivors:
+            return {}
+
+        hypothesis_of = self.rows().hypothesis
         found: dict[Cell, list[int]] = {}
-        for which, group in self._vote_groups():
-            order, first, labels = run_starts(group)
+        for which, cell_index, _ in self._vote_groups():
+            order, first, labels = run_starts(cell_index)
             bounds = np.append(first, len(order))
-            for start in range(0, which.size, VOTE_ROW_CHUNK):
-                chunk = which[start : start + VOTE_ROW_CHUNK]
-                block = matched[:, chunk][order]
-                votes = np.add.reduceat(block, first, axis=0)
-                for run, position in zip(*np.nonzero(votes >= min_votes)):
-                    row = int(chunk[position])
-                    members = order[bounds[run] : bounds[run + 1]]
-                    hits = [int(q) for q in members if matched[q, row]]
-                    cell = self._cell_of(row, int(labels[run]))
+            run_of_label = {int(label): run for run, label in enumerate(labels)}
+            row_of_hypothesis = {int(hypothesis_of[row]): int(row) for row in which}
+            for label, hypothesis in survivors:
+                run = run_of_label.get(label)
+                row = row_of_hypothesis.get(hypothesis)
+                if run is None or row is None:
+                    continue
+                members = order[bounds[run] : bounds[run + 1]]
+                hits = [int(q) for q in members if matched[q, row]]
+                if hits:
+                    cell = self._cell_of(self._first_row_of(hypothesis), label)
                     found.setdefault(cell, []).extend(hits)
-        return found
+        return {cell: sorted(queries) for cell, queries in found.items()}
 
     def rank_cells(self, distances: dict[Cell, int]) -> list[PrnResult]:
         """Keeps the closest surviving cell of each PRN.
@@ -778,8 +902,10 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         if self.search_mode == "table":
             table = self.distance_table(samples)
             return self.decide(table, self.hd_threshold, self.min_votes)
-        cells = self.shortlist_cells(self.matched_table(samples), self.min_votes)
-        return self.rank_shortlist(samples, cells)
+        matched = self.matched_table(samples)
+        return self.rank_shortlist(
+            samples, self.shortlist_cells(matched, self.min_votes)
+        )
 
     def rank_shortlist(
         self, samples: np.ndarray, cells: dict[Cell, list[int]]

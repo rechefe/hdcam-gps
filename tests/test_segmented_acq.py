@@ -203,13 +203,16 @@ def test_a_planted_satellite_comes_back_at_its_own_code_phase(code_phase):
     assert [r.code_phase for r in reported] == [code_phase]
 
 
-def test_a_single_sub_row_cannot_tell_one_doppler_bin_from_the_next():
-    # 32 samples is 156 microseconds here, over which 500 Hz turns by 28
-    # degrees. Every bin matches about as well, so the reported Doppler is
-    # whichever row the tie-break reaches first. The m-of-K rule of phase 2 is
-    # what has to win this back.
+def test_the_family_cannot_resolve_doppler_at_all():
+    # A segment this short has a frequency resolution of 1/T, and the whole
+    # search range fits inside one cell of it, so every bin is an equally good
+    # answer. The m-of-K rule cannot win this back: it counts segments, and they
+    # all match.
     config = make_config()
     classifier = make_classifier(config)
+    window_s = classifier.segment_samples / config.fs_hz
+    assert 1.0 / window_s > config.doppler_max_hz - config.doppler_min_hz
+
     reported = {
         classifier.acquire(
             make_signal(config, 2, doppler_hz=float(doppler_hz), code_phase=55)
@@ -217,6 +220,52 @@ def test_a_single_sub_row_cannot_tell_one_doppler_bin_from_the_next():
         for doppler_hz in config.doppler_grid_hz
     }
     assert len(reported) == 1
+
+
+def test_every_doppler_bin_matches_a_segment_equally_well():
+    # The measurement behind the test above: a clean satellite sits at distance
+    # zero from its own PRN in every bin, so nothing downstream can choose.
+    config = make_config()
+    classifier = make_classifier(config, search_mode="table")
+    signal = make_signal(config, 2, doppler_hz=500.0, code_phase=17)
+    table = classifier.distance_table(signal)
+    rows = classifier.row_index()
+
+    closest = set()
+    for doppler_bin in range(classifier.n_doppler_bins):
+        of_bin = np.flatnonzero((rows.prn == 2) & (rows.doppler_bin == doppler_bin))
+        closest.add(int(table[:, of_bin].min()))
+    assert closest == {0}
+
+
+def test_more_segments_per_look_never_shortlists_more():
+    config = make_config()
+    signal = make_signal(config, 2, doppler_hz=500.0, code_phase=55)
+    lenient = make_classifier(config, min_segments=1, search_mode="table")
+    strict = make_classifier(config, min_segments=6, search_mode="table")
+    table = lenient.distance_table(signal)
+    assert set(
+        strict.cells_from_table(table, strict.hd_threshold, 1)
+    ) <= set(lenient.cells_from_table(table, lenient.hd_threshold, 1))
+
+
+def test_the_sub_rows_of_one_hypothesis_are_voted_on_together():
+    classifier = make_classifier(make_config())
+    rows = classifier.rows()
+    assert classifier.n_hypotheses == int(rows.hypothesis.max()) + 1
+    for segment in range(classifier.n_segments):
+        assert rows.hypothesis[classifier.row_of(1, 0, segment)] == (
+            rows.hypothesis[classifier.row_of(1, 0, 0)]
+        )
+    assert rows.hypothesis[classifier.row_of(1, 1, 0)] != (
+        rows.hypothesis[classifier.row_of(1, 0, 0)]
+    )
+
+
+@pytest.mark.parametrize("bad", [0, -1, 99])
+def test_a_segment_rule_outside_the_sub_rows_available_is_rejected(bad):
+    with pytest.raises(AssertionError):
+        make_classifier(make_config(), min_segments=bad)
 
 
 def test_a_silent_record_acquires_nothing():
