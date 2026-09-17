@@ -24,7 +24,14 @@ uv run pytest -k "shortlist"                             # by name
 git submodule update --init --recursive                  # needed for the simulator backend
 uv run jupyter lab notebooks/example_run.ipynb           # end-to-end walkthrough
 uv run python scripts/make_proposal_pdf.py               # rebuild PROPOSAL.pdf
+
+uv run python scripts/run_family_screen.py       # phase 1, ~45 min -> docs/screen_results.json
+uv run python scripts/run_family_calibration.py  # phase 3, ~6 h  -> docs/calibration.json
 ```
+
+Both study runs need the submodule, take hours, and have their results checked in, so
+read the JSON rather than repeating the run. The calibration script rewrites its JSON
+after each family, so a run cut short still leaves everything it finished.
 
 Tests needing the gps-sdr-sim submodule are guarded by `sources_checked_out()` and
 **skip** rather than fail when it is missing, so a green run does not prove that path
@@ -32,7 +39,7 @@ was exercised.
 
 ## Architecture
 
-Six things that are not visible from any single file.
+Eight things that are not visible from any single file.
 
 **The classifier contract** (`acq_base.py`). `GpsL1AcqClassifier` carries the
 `AcqConfig` it was built for. Public `acquire()` asserts
@@ -96,6 +103,24 @@ of thresholds over hundreds of records. `calibrate.score_table` is now a call to
 two paths return the same `PrnResult` list, and the GEMM table equals a counted one bit
 for bit.
 
+**A grid of settings is replayed, not re-decided** (`decide_grid`). Calibration asks one
+table the same question a few dozen times, and most of the work neither knob changes: the
+distance kept per cell depends on neither, and the vote count depends only on the
+threshold. So `_best_distances` runs once per table and `_count_votes` once per threshold,
+and both `decide` and `decide_grid` finish through the same `_cells_from_votes` and
+`rank_cells` — **there is still exactly one rule**, and a test asserts the two agree
+setting for setting. This is not an optimisation to take or leave: it is what makes a
+family affordable to calibrate at all (the segmented one went from 390 s a record to 54).
+
+**A Doppler-blind family is calibrated with its second stage in the loop**
+(`calibrate.RefinedCamCalibrator`). §4.1 counts a detection at the wrong Doppler as a miss
+and a false alarm at once, so scoring the segmented family on its own output would reject
+every setting for a reason that is not about the setting. Its `prepare` carries the samples
+beside the table, because a distance table has nowhere to run a correlator. It memoises the
+sweep per record and deliberately does **not** call `DopplerRefiner.refine`, so the
+refiner's own counter stays at zero: a count taken across a calibration grid is not the
+per-acquisition cost §4.7 reports.
+
 ## Module map
 
 | Module | Role |
@@ -119,7 +144,7 @@ for bit.
 | `sim_cache.py` | Caches a simulator record, which does not depend on C/N0 |
 | `scenarios.py` | `ScenarioBank`: records built once, split into calibration and evaluation skies |
 | `evaluate.py` | Scores any classifier over a C/N0 sweep; `score_events` is the study's event vocabulary |
-| `calibrate.py` | Searches a setting against a target operating point, for a family or the FFT reference |
+| `calibrate.py` | Searches a setting against a target operating point, for a family or the FFT reference; `FrozenSetting` and `save/load_calibration` are what phase 3 freezes into `docs/calibration.json` |
 
 Tests mirror sources 1:1 as `tests/test_<module>.py`, so a change has an obvious test home.
 

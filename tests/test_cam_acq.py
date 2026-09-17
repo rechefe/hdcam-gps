@@ -279,6 +279,50 @@ def test_decide_is_the_cells_it_finds_ranked():
     )
 
 
+def test_the_grid_replay_agrees_with_the_decision_setting_for_setting():
+    # decide_grid skips the work neither knob changes, which is the only reason
+    # calibrating a family is affordable. If it ever stopped agreeing with
+    # decide, the study would be calibrated on one rule and measured on another.
+    config = make_config(n_codes=6)
+    classifier = OneBitHdCamClassifier(config)
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 0.0, 60, cn0_dbhz=50.0)], seed=2
+    )
+    table = classifier.distance_table(scenario.samples)
+    settings = [
+        (classifier.hd_threshold, 1),
+        (classifier.hd_threshold, 3),
+        (classifier.hd_threshold - 20, 1),
+        (classifier.hd_threshold - 20, 3),
+    ]
+    decided = classifier.decide_grid(table, settings)
+    assert set(decided) == set(settings)
+    for setting in settings:
+        assert decided[setting] == classifier.decide(table, *setting)
+
+
+def test_the_grid_replay_of_one_setting_is_that_setting():
+    config = make_config()
+    classifier = OneBitHdCamClassifier(config)
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(2, 0.0, 12, cn0_dbhz=50.0)], seed=5
+    )
+    table = classifier.distance_table(scenario.samples)
+    setting = (classifier.hd_threshold, 1)
+    assert classifier.decide_grid(table, [setting])[setting] == (
+        classifier.decide(table, *setting)
+    )
+
+
+def test_the_grid_replay_asks_for_nothing_when_given_nothing():
+    config = make_config()
+    classifier = OneBitHdCamClassifier(config)
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 0.0, 3, cn0_dbhz=50.0)], seed=6
+    )
+    assert classifier.decide_grid(classifier.distance_table(scenario.samples), []) == {}
+
+
 def test_a_tighter_threshold_never_finds_more_cells():
     config = make_config()
     classifier = OneBitHdCamClassifier(config)

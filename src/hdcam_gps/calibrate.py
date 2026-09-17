@@ -30,8 +30,10 @@ wants. Confirming 1e-4 by the rule of three needs 30 000 records per family. So
 pfa_upper is printed in every table and 1e-4 is not demonstrated anywhere.
 """
 
-from dataclasses import dataclass
-from math import comb
+import json
+from dataclasses import asdict, dataclass
+from math import comb, isfinite
+from pathlib import Path
 from typing import ClassVar
 
 import numpy as np
@@ -42,6 +44,7 @@ from hdcam_gps.cam_acq import CamAcqClassifier
 from hdcam_gps.evaluate import AcquisitionEvents, score_events
 from hdcam_gps.fft_acq import FftAcqClassifier
 from hdcam_gps.hdcam_acq import OneBitHdCamClassifier
+from hdcam_gps.refine import DopplerRefiner
 from hdcam_gps.signal_gen import SatelliteTruth, Scenario, generate_synthetic
 
 DEFAULT_VOTE_CHOICES: tuple[float, ...] = (0.2, 1 / 3, 0.5, 0.7)
@@ -225,6 +228,165 @@ class CalibrationResult:
         return "\n".join(rows)
 
 
+@dataclass(frozen=True)
+class FrozenSetting:
+    """One family's calibrated setting, and the evidence for choosing it.
+
+    Phase 3 of the study picks a setting on the calibration skies and phase 4
+    measures with it on the evaluation skies, so the pick has to survive the gap
+    between two runs. That is what this is for: it is written to JSON, checked
+    in, and read back by the comparison, which never sees set A.
+
+    The rates travel with the setting because a threshold on its own is not a
+    result. A reader has to be able to see which false alarm rate it was matched
+    at and how many records that rate rests on.
+    """
+
+    family: str
+    n_records: int
+    target_pfa: float
+    hd_threshold: int | None = None  # The CAM knobs, when it is a CAM family
+    min_votes: int | None = None
+    peak_ratio: float | None = None  # The reference's knob instead
+    pfa: float = 0.0  # Measured on set A, per acquisition
+    pfa_upper: float = 1.0  # What those records support, at 95 percent
+    pfa_per_prn: float = float("nan")
+    n_wrong_fix: int = 0
+    pd: float = 0.0  # Pooled per satellite, over every set A record
+    pd_in_band: float = 0.0  # Inside the operating point's C/N0 band
+    n_satellites: int = 0
+    n_band_satellites: int = 0
+
+    @classmethod
+    def from_candidate(
+        cls, family: str, candidate, target_pfa: float
+    ) -> "FrozenSetting":
+        """Freezes what a calibration picked.
+
+        Args:
+            family (str): The name the study's tables print.
+            candidate: A Candidate or a RatioCandidate.
+            target_pfa (float): The rate every family was held to.
+
+        Returns:
+            FrozenSetting: The setting and its evidence.
+        """
+        return cls(
+            family=family,
+            n_records=candidate.n_trials,
+            target_pfa=float(target_pfa),
+            hd_threshold=getattr(candidate, "hd_threshold", None),
+            min_votes=getattr(candidate, "min_votes", None),
+            peak_ratio=getattr(candidate, "peak_ratio", None),
+            pfa=candidate.pfa,
+            pfa_upper=candidate.pfa_upper,
+            pfa_per_prn=candidate.pfa_per_prn,
+            n_wrong_fix=candidate.n_wrong_fix,
+            pd=candidate.pd,
+            pd_in_band=candidate.pd_in_band,
+            n_satellites=candidate.n_satellites,
+            n_band_satellites=candidate.n_band_satellites,
+        )
+
+    def apply(self, classifier):
+        """Sets a classifier to this setting, in place.
+
+        Args:
+            classifier: The classifier to configure. A CAM family takes the
+                threshold and the vote rule, the FFT reference its peak ratio.
+
+        Returns:
+            The same classifier, so a call can be inlined.
+        """
+        if self.peak_ratio is not None:
+            classifier.peak_ratio = float(self.peak_ratio)
+            return classifier
+        assert self.hd_threshold is not None and self.min_votes is not None, (
+            f"{self.family} froze neither a peak ratio nor a pair of CAM knobs."
+        )
+        classifier.set_hd_threshold(int(self.hd_threshold))
+        classifier.min_votes = int(self.min_votes)
+        return classifier
+
+    @property
+    def setting(self) -> str:
+        """The knobs, formatted for a table row."""
+        if self.peak_ratio is not None:
+            return f"ratio {self.peak_ratio:.2f}"
+        return f"thr {self.hd_threshold}, votes {self.min_votes}"
+
+
+def save_calibration(path, settings: dict, meta: dict | None = None) -> dict:
+    """Writes the frozen settings of a run, so phase 4 can read them back.
+
+    Args:
+        path: Where to write the JSON.
+        settings (dict): Family name to FrozenSetting. A family that found no
+            setting is recorded as None rather than dropped, because "no
+            threshold met the target" is a result and a missing key is not.
+        meta (dict | None): What the run was, alongside the settings.
+
+    Returns:
+        dict: What was written.
+    """
+    document = {
+        "meta": meta or {},
+        "settings": {
+            name: (_plain(asdict(frozen)) if frozen is not None else None)
+            for name, frozen in settings.items()
+        },
+    }
+    Path(path).write_text(json.dumps(document, indent=2))
+    return document
+
+
+def _plain(entry: dict) -> dict:
+    """A frozen setting with its non finite floats written as null.
+
+    A rate of nan is what an unmeasurable one looks like, and NaN is not JSON.
+
+    Args:
+        entry (dict): The setting, as a dict.
+
+    Returns:
+        dict: The same, JSON clean.
+    """
+    return {
+        key: (None if isinstance(value, float) and not isfinite(value) else value)
+        for key, value in entry.items()
+    }
+
+
+def load_calibration(path) -> dict:
+    """Reads back what save_calibration wrote.
+
+    Args:
+        path: The JSON to read.
+
+    Returns:
+        dict: Family name to FrozenSetting or None, under "settings", with the
+            run's "meta" beside it.
+    """
+    document = json.loads(Path(path).read_text())
+    return {
+        "meta": document.get("meta", {}),
+        "settings": {
+            name: (
+                FrozenSetting(
+                    **{
+                        key: (float("nan") if key == "pfa_per_prn" and value is None
+                              else value)
+                        for key, value in entry.items()
+                    }
+                )
+                if entry is not None
+                else None
+            )
+            for name, entry in document["settings"].items()
+        },
+    }
+
+
 def binomial_upper_bound(successes: int, trials: int, confidence: float = 0.95) -> float:
     """The Clopper-Pearson upper bound on a rate.
 
@@ -393,6 +555,21 @@ class CamCalibrator:
         """
         return self.classifier.decide(prepared, setting[0], setting[1])
 
+    def replay_all(self, prepared) -> dict:
+        """Every setting at once, off the one sweep.
+
+        The grid replay skips the work neither knob changes, which is most of
+        it, so this is several times faster than calling replay per setting and
+        returns the same answers.
+
+        Args:
+            prepared: The distance table.
+
+        Returns:
+            dict: Setting to the results it would have produced.
+        """
+        return self.classifier.decide_grid(prepared, self.settings)
+
     def candidate(self, setting, counts: dict) -> Candidate:
         """Packs the counters of one setting into a Candidate.
 
@@ -404,6 +581,113 @@ class CamCalibrator:
             Candidate: The setting and how it did.
         """
         return Candidate(hd_threshold=setting[0], min_votes=setting[1], **counts)
+
+
+class RefinedCamCalibrator(CamCalibrator):
+    """A Doppler blind family calibrated with the second stage in the loop.
+
+    Section 4.1 counts a detection at the wrong Doppler as a miss and a false
+    alarm at once, so calibrating a blind family on its own output would score
+    every correct answer as both. The second stage has to run before the events
+    are counted, and a distance table alone has nowhere to run it - it needs the
+    record. So prepare carries the samples alongside the table.
+
+    Resolving a Doppler is deterministic in (PRN, code phase), and the settings
+    of one record shortlist the same cells over and over, so the sweep is
+    memoised for the record being replayed. That memo is why this class does not
+    use DopplerRefiner.refine: refine counts the detections it was asked about,
+    and a count taken across a whole calibration grid is not the per acquisition
+    cost section 4.7 reports. Cost is measured on set B, at the frozen setting,
+    through the composed classifier.
+    """
+
+    def __init__(
+        self,
+        classifier: CamAcqClassifier,
+        sigma_grid: tuple[float, ...] = DEFAULT_SIGMA_GRID,
+        vote_fractions: tuple[float, ...] = DEFAULT_VOTE_CHOICES,
+        floor: tuple[float, float] | None = None,
+        mixer: str = "quadrant",
+    ):
+        """Builds the family's grid and the second stage that finishes it.
+
+        Args:
+            classifier (CamAcqClassifier): The Doppler blind family.
+            sigma_grid (tuple[float, ...]): As CamCalibrator.
+            vote_fractions (tuple[float, ...]): As CamCalibrator.
+            floor (tuple[float, float] | None): As CamCalibrator.
+            mixer (str): Passed to DopplerRefiner. The quadrant mixer keeps the
+                front end at 1 bit.
+        """
+        super().__init__(classifier, sigma_grid, vote_fractions, floor)
+        self.refiner = DopplerRefiner(classifier.config, mixer=mixer)
+        self._resolved: dict[tuple[int, int], float] = {}
+
+    def prepare(self, scenario: Scenario):
+        """The sweep, and the record the second stage needs.
+
+        Args:
+            scenario (Scenario): The record to sweep.
+
+        Returns:
+            tuple: The distance table and the samples it came from.
+        """
+        self._resolved = {}
+        return self.classifier.distance_table(scenario.samples), scenario.samples
+
+    def replay(self, prepared, setting) -> list[PrnResult]:
+        """Scores one setting, Doppler resolved.
+
+        Args:
+            prepared: The distance table and the samples.
+            setting: A (hd_threshold, min_votes) pair.
+
+        Returns:
+            list[PrnResult]: What the composed classifier would have returned.
+        """
+        table, samples = prepared
+        return self.refine(samples, self.classifier.decide(table, *setting))
+
+    def replay_all(self, prepared) -> dict:
+        """Every setting at once, each one Doppler resolved.
+
+        Args:
+            prepared: The distance table and the samples.
+
+        Returns:
+            dict: Setting to the results it would have produced.
+        """
+        table, samples = prepared
+        return {
+            setting: self.refine(samples, results)
+            for setting, results in self.classifier.decide_grid(
+                table, self.settings
+            ).items()
+        }
+
+    def refine(self, samples: np.ndarray, results: list[PrnResult]) -> list[PrnResult]:
+        """Replaces each Doppler with a resolved one, reusing the sweeps.
+
+        Args:
+            samples (np.ndarray): The record being replayed.
+            results (list[PrnResult]): What the blind family returned.
+
+        Returns:
+            list[PrnResult]: The same detections, Doppler resolved.
+        """
+        resolved = []
+        for result in results:
+            key = (result.prn, result.code_phase)
+            if key not in self._resolved:
+                self._resolved[key] = self.refiner.resolve(samples, *key)
+            resolved.append(
+                PrnResult(
+                    prn=result.prn,
+                    doppler_hz=self._resolved[key],
+                    code_phase=result.code_phase,
+                )
+            )
+        return resolved
 
 
 class PeakRatioCalibrator:
@@ -450,6 +734,17 @@ class PeakRatioCalibrator:
             list[PrnResult]: What the reference would have returned.
         """
         return self.classifier.decide(prepared, setting)
+
+    def replay_all(self, prepared) -> dict:
+        """Every ratio at once, off the one set of surfaces.
+
+        Args:
+            prepared: The correlation surfaces.
+
+        Returns:
+            dict: Setting to the results it would have produced.
+        """
+        return {setting: self.replay(prepared, setting) for setting in self.settings}
 
     def candidate(self, setting, counts: dict) -> RatioCandidate:
         """Packs the counters of one ratio into a RatioCandidate.
@@ -569,11 +864,11 @@ def run_calibration(
     for scenario in tqdm(
         scenarios, disable=not progress, desc="calibrating", unit="record"
     ):
-        prepared = replayer.prepare(scenario)
+        decided = replayer.replay_all(replayer.prepare(scenario))
         for setting in replayer.settings:
             events = score_events(
                 scenario,
-                replayer.replay(prepared, setting),
+                decided[setting],
                 code_phase_tolerance=target.code_phase_tolerance,
                 doppler_bins=target.doppler_bins,
             )
@@ -594,25 +889,44 @@ def run_calibration(
 
 
 def match_false_alarm(
-    result: CalibrationResult, target_pfa: float = DEFAULT_TARGET_PFA
+    result: CalibrationResult,
+    target_pfa: float = DEFAULT_TARGET_PFA,
+    bound: str = "upper",
 ):
     """The setting the study compares at, picked at a matched false alarm rate.
 
-    For every vote rule, the loosest threshold whose false alarm bound clears the
+    For every vote rule, the loosest threshold whose false alarm rate clears the
     target; among those, the one detecting most inside the operating point's C/N0
     band. Comparing families at their own best false alarm rates would reward
     whichever happened to be most conservative, so the rate is fixed first and
     sensitivity is read off afterwards.
 
+    Which rate to gate on is not a free choice, and section 4.5 of the study
+    plan asks for one that cannot be met. With zero events in n records the
+    Clopper-Pearson bound is 3/n whatever the setting, so gating on it neither
+    distinguishes one setting from another nor depends on the classifier: it
+    passes every zero event setting or none, according to n alone. The
+    calibration set holds 140 records, where that bound is 2.1e-2, so no setting
+    of any family could ever clear 1e-2 there. The measured rate does
+    discriminate, at the resolution 140 records allow, so that is what the
+    calibration gates on and CalibrationResult.trials_needed says what the bound
+    would require. The bound itself is reported on the evaluation set, which
+    holds the 280 records section 4.4 counts on.
+
     Args:
         result (CalibrationResult): Every setting tried.
         target_pfa (float): The per acquisition rate every family is held to.
+        bound (str): "upper" to gate on the 95 percent confidence bound, which
+            needs 3/target_pfa records to be reachable at all, or "measured" to
+            gate on the observed rate.
 
     Returns:
         Candidate | RatioCandidate | None: The pick, or None when no setting
             clears the target.
     """
-    passing = [c for c in result.candidates if c.pfa_upper <= target_pfa]
+    assert bound in ("upper", "measured"), 'bound is "upper" or "measured".'
+    rate = (lambda c: c.pfa_upper) if bound == "upper" else (lambda c: c.pfa)
+    passing = [c for c in result.candidates if rate(c) <= target_pfa]
     if not passing:
         return None
     loosest: dict = {}

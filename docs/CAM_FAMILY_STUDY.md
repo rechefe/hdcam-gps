@@ -308,11 +308,23 @@ transfer to a ten-satellite sky. So:
   evaluation skies** (set B). Nothing in 4.3–4.4 is ever computed on set A.
 - Per family, one distance table per set-A record; replay the (threshold, votes) grid via
   `decide()`; score with the 4.1 events. For each vote rule take the loosest threshold whose
-  `P_fa,acq` upper bound ≤ 1e-2; among those pick the highest pooled P_d in the 38–42 dB-Hz
+  `P_fa,acq` clears 1e-2; among those pick the highest pooled P_d in the 38–42 dB-Hz
   bins. Freeze. Print the calibration table for every family.
 - **The FFT reference goes through the identical protocol** over a `peak_ratio` grid,
   replayed from cached `correlate()` surfaces. PROPOSAL: "everything at matched P_fa or it
   is not a comparison" — the plan's `compare()` had left it out.
+
+**Which rate the gate reads, corrected at phase 3.** This section asked for the gate to be
+the 95% upper bound, and that cannot be met on set A by any setting of any family. With
+zero events in `n` records the Clopper-Pearson bound is 3/n regardless of the setting, so
+gating on it passes every zero-event setting or none, according to `n` alone — it measures
+the length of the run, not the design. Set A is 20 skies × 7 scalings = **140 records**,
+where that bound is **2.1e-2**; reaching 1e-2 needs 300. The measured rate does
+discriminate, at the resolution 140 records allow, so `match_false_alarm(..., bound=
+"measured")` is what phase 3 picks on, `CalibrationResult.trials_needed` prints what the
+bound would have required, and `pfa_upper` is reported beside every pick. §4.4's bound is
+stated on set B, which holds the 280 records it counts on. `bound="upper"` remains the
+default of the function, so nothing outside the phase-3 script changed.
 
 ### 4.6 Separation and required tolerance — the screen and the answer to risk 1
 

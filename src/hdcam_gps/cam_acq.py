@@ -261,6 +261,7 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         self.search_mode = search_mode
         self._row_cache: RowIndex | None = None
         self._query_cache: dict[int, QueryIndex] = {}
+        self._first_row_cache: np.ndarray | None = None
         self._doppler_in_query: bool | None = None
         assert min_segments >= 1, "A look votes on at least one row."
         self.min_segments = min_segments
@@ -676,7 +677,26 @@ class CamAcqClassifier(GpsL1AcqClassifier):
             int: Its lowest row, which carries the same PRN and Doppler bin as
                 the rest.
         """
-        return int(np.flatnonzero(self.rows().hypothesis == hypothesis)[0])
+        return int(self._first_rows()[hypothesis])
+
+    def _first_rows(self) -> np.ndarray:
+        """The lowest row of every hypothesis, built once.
+
+        A loose threshold shortlists hundreds of thousands of cells and each one
+        has to be named, so this is a lookup rather than a scan of the row index.
+
+        Returns:
+            np.ndarray: One row index per hypothesis.
+        """
+        if self._first_row_cache is None:
+            hypothesis = self.rows().hypothesis
+            first = np.full(self.n_hypotheses, -1, dtype=np.int64)
+            # Reversed, so the lowest row of each hypothesis is written last.
+            order = np.arange(hypothesis.size)[::-1]
+            first[hypothesis[order]] = order
+            assert not np.any(first < 0), "Every hypothesis owns at least one row."
+            self._first_row_cache = first
+        return self._first_row_cache
 
     def _cell_of(self, row: int, label: int) -> Cell:
         """The hypothesis a surviving (row, cell slot) pair stands for.
@@ -776,8 +796,25 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         """
         if min_segments is None:
             min_segments = self.min_segments
-        votes = self._count_votes(table <= hd_threshold, min_segments)
-        best = self._best_distances(table)
+        return self._cells_from_votes(
+            self._count_votes(table <= hd_threshold, min_segments),
+            self._best_distances(table),
+            min_votes,
+        )
+
+    def _cells_from_votes(
+        self, votes: np.ndarray, best: np.ndarray, min_votes: int
+    ) -> dict[Cell, int]:
+        """The surviving cells, once the counting either knob drives is done.
+
+        Args:
+            votes (np.ndarray): Votes of shape (n_cell_slots, n_hypotheses).
+            best (np.ndarray): Distances of the same shape.
+            min_votes (int): How many looks have to vote.
+
+        Returns:
+            dict[Cell, int]: The best distance of each surviving cell.
+        """
         found: dict[Cell, int] = {}
         for label, hypothesis in zip(*np.nonzero(votes >= min_votes)):
             cell = self._cell_of(self._first_row_of(int(hypothesis)), int(label))
@@ -838,16 +875,20 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         """
         prn_of_row = self.rows().prn
         grid = self.config.doppler_grid_hz
+        # One pass rather than one per PRN: a loose threshold shortlists a cell
+        # for nearly every code phase, and scanning that 32 times is the whole
+        # cost of replaying a setting.
+        best: dict[int, tuple[int, Cell]] = {}
+        for cell, distance in distances.items():
+            prn = int(prn_of_row[cell.row])
+            current = best.get(prn)
+            if current is None or (distance, cell) < current:
+                best[prn] = (distance, cell)
         results = []
         for prn in self.config.prn_list:
-            block = [
-                (distance, cell)
-                for cell, distance in distances.items()
-                if prn_of_row[cell.row] == prn
-            ]
-            if not block:
+            if prn not in best:
                 continue
-            _, cell = min(block)
+            _, cell = best[prn]
             results.append(
                 PrnResult(
                     prn=prn,
@@ -889,6 +930,47 @@ class CamAcqClassifier(GpsL1AcqClassifier):
             list[PrnResult]: What the classifier would have returned.
         """
         return self.rank_cells(self.cells_from_table(table, hd_threshold, min_votes))
+
+    def decide_grid(
+        self,
+        table: np.ndarray,
+        settings,
+        min_segments: int | None = None,
+    ) -> dict[tuple[int, int], list[PrnResult]]:
+        """The same decision, replayed over a grid of settings.
+
+        Calibration asks one table the same question a few dozen times, and most
+        of the work neither knob changes: the distance kept per cell does not
+        depend on either, and the vote count depends only on the threshold. So
+        the first is computed once per table and the second once per threshold,
+        and the settings sharing a threshold cost only the shortlist. The rule
+        itself is the one in decide - both go through _cells_from_votes and
+        rank_cells - so there is no second copy to keep in step, and a test
+        asserts the two agree setting for setting.
+
+        Args:
+            table (np.ndarray): Distances of shape (n_queries, n_rows).
+            settings: An iterable of (hd_threshold, min_votes) pairs.
+            min_segments (int | None): Rows of a hypothesis a look needs. None
+                takes the classifier's own.
+
+        Returns:
+            dict[tuple[int, int], list[PrnResult]]: What the classifier would
+                have returned, per setting.
+        """
+        if min_segments is None:
+            min_segments = self.min_segments
+        wanted = sorted({(int(t), int(v)) for t, v in settings})
+        best = self._best_distances(table)
+        decided: dict[tuple[int, int], list[PrnResult]] = {}
+        for threshold in sorted({t for t, _ in wanted}):
+            votes = self._count_votes(table <= threshold, min_segments)
+            for setting in wanted:
+                if setting[0] == threshold:
+                    decided[setting] = self.rank_cells(
+                        self._cells_from_votes(votes, best, setting[1])
+                    )
+        return decided
 
     def _acquire(self, samples: np.ndarray) -> list[PrnResult]:
         """Shortlists hypotheses, then ranks them by distance.

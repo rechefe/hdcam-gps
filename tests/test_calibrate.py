@@ -13,21 +13,26 @@ from hdcam_gps.calibrate import (
     CalibrationResult,
     CamCalibrator,
     Candidate,
+    FrozenSetting,
     OperatingPoint,
     PeakRatioCalibrator,
     RatioCandidate,
+    RefinedCamCalibrator,
     binomial_interval,
     binomial_lower_bound,
     binomial_upper_bound,
     calibrate,
     calibrate_peak_ratio,
+    load_calibration,
     match_false_alarm,
+    save_calibration,
     score_table,
 )
 from hdcam_gps.evaluate import EvalConfig
 from hdcam_gps.fft_acq import FftAcqClassifier
 from hdcam_gps.hdcam_acq import OneBitHdCamClassifier
 from hdcam_gps.scenarios import ScenarioBank
+from hdcam_gps.segmented_acq import SegmentedHdCamClassifier
 from hdcam_gps.signal_gen import SatelliteTruth, generate_synthetic
 
 
@@ -382,6 +387,48 @@ def test_there_is_no_match_when_nothing_clears_the_rate():
     assert match_false_alarm(result, 0.01) is None
 
 
+def test_the_confidence_bound_gate_cannot_be_met_on_too_few_records():
+    # The plan asks for the pick to be gated on the 95 percent bound. With zero
+    # events that bound is about three over the record count whatever the
+    # setting, so on a hundred records nothing can clear one percent - the gate
+    # would be measuring how long the run was rather than the design.
+    result = a_result([matched_candidate(n_trials=100, n_detected=100, n_false=0)])
+    assert match_false_alarm(result, 0.01, bound="upper") is None
+    assert match_false_alarm(result, 0.01, bound="measured") is not None
+
+
+def test_the_bound_gate_is_what_the_plan_asks_for_when_the_records_support_it():
+    result = a_result([matched_candidate(n_trials=1000, n_false=0)])
+    assert match_false_alarm(result, 0.05, bound="upper") is not None
+
+
+def test_the_measured_gate_still_rejects_a_setting_that_false_alarms():
+    result = a_result([matched_candidate(n_trials=140, n_false=7)])
+    assert match_false_alarm(result, 0.01, bound="measured") is None
+
+
+def test_the_gate_defaults_to_the_bound_the_plan_names():
+    result = a_result([matched_candidate(n_trials=100, n_false=0)])
+    assert match_false_alarm(result, 0.01) is match_false_alarm(
+        result, 0.01, bound="upper"
+    )
+
+
+@pytest.mark.parametrize("bad", ["lower", "", "Upper"])
+def test_an_unknown_gate_is_rejected(bad):
+    with pytest.raises(AssertionError):
+        match_false_alarm(a_result([matched_candidate()]), 0.01, bound=bad)
+
+
+def test_the_records_a_bound_would_need_is_the_rule_of_three():
+    result = CalibrationResult(
+        target=OperatingPoint(max_pfa=0.01),
+        candidates=(matched_candidate(),),
+        n_trials=100,
+    )
+    assert result.trials_needed == 300
+
+
 def test_a_loose_ratio_is_the_looser_setting_for_the_reference():
     result = a_result(
         [
@@ -497,3 +544,213 @@ def test_calibrating_on_a_bank_scores_every_record_it_holds():
     )
     assert result.n_trials == 4
     assert result.candidates[0].n_satellites == 4
+
+
+# --------------------------------------------------------------------------
+# replaying a whole grid off one sweep
+# --------------------------------------------------------------------------
+
+
+def test_the_grid_replay_gives_what_replaying_one_at_a_time_gives():
+    # run_calibration scores from replay_all, so if the two ever parted the
+    # calibration table would stop describing the classifier it was taken from.
+    config = make_config()
+    classifier = OneBitHdCamClassifier(config)
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 0.0, 40, cn0_dbhz=50.0)], seed=1
+    )
+    calibrator = CamCalibrator(
+        classifier, sigma_grid=(2.0, 3.5), vote_fractions=(1 / 3, 0.7)
+    )
+    prepared = calibrator.prepare(scenario)
+    decided = calibrator.replay_all(prepared)
+    assert set(decided) == set(calibrator.settings)
+    for setting in calibrator.settings:
+        assert decided[setting] == calibrator.replay(prepared, setting)
+
+
+def test_the_reference_grid_replay_gives_what_one_ratio_gives():
+    config = make_config()
+    classifier = FftAcqClassifier(config)
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 500.0, 40, cn0_dbhz=60.0)], seed=0
+    )
+    calibrator = PeakRatioCalibrator(classifier, ratio_grid=(1.5, 3.0))
+    prepared = calibrator.prepare(scenario)
+    decided = calibrator.replay_all(prepared)
+    assert decided == {
+        setting: calibrator.replay(prepared, setting)
+        for setting in calibrator.settings
+    }
+
+
+# --------------------------------------------------------------------------
+# calibrating a family that cannot report a Doppler
+# --------------------------------------------------------------------------
+
+
+def test_the_blind_family_is_scored_with_its_second_stage_in_the_loop():
+    # Without the refiner every correct detection is a wrong fix, which section
+    # 4.1 counts as a miss and a false alarm at once, so the calibration would
+    # reject every setting for a reason that is not about the setting.
+    config = make_config(n_codes=4)
+    classifier = SegmentedHdCamClassifier(config, search_mode="table")
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 500.0, 40, cn0_dbhz=60.0)], seed=0
+    )
+    calibrator = RefinedCamCalibrator(classifier, sigma_grid=(3.0,), vote_fractions=(0.5,))
+    prepared = calibrator.prepare(scenario)
+    blind = classifier.decide(prepared[0], *calibrator.settings[0])
+    refined = calibrator.replay(prepared, calibrator.settings[0])
+    assert [r.prn for r in refined] == [r.prn for r in blind]
+    assert [r.code_phase for r in refined] == [r.code_phase for r in blind]
+    assert PrnResult(prn=1, doppler_hz=500.0, code_phase=40) in refined
+
+
+def test_the_blind_grid_replay_agrees_with_one_setting_at_a_time():
+    config = make_config(n_codes=4)
+    classifier = SegmentedHdCamClassifier(config, search_mode="table")
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(2, 0.0, 12, cn0_dbhz=60.0)], seed=3
+    )
+    calibrator = RefinedCamCalibrator(
+        classifier, sigma_grid=(2.5, 3.5), vote_fractions=(0.5,)
+    )
+    prepared = calibrator.prepare(scenario)
+    decided = calibrator.replay_all(prepared)
+    for setting in calibrator.settings:
+        assert decided[setting] == calibrator.replay(prepared, setting)
+
+
+def test_resolving_a_doppler_twice_reuses_the_sweep_rather_than_repeating_it():
+    config = make_config(n_codes=4)
+    calibrator = RefinedCamCalibrator(
+        SegmentedHdCamClassifier(config, search_mode="table"),
+        sigma_grid=(3.0,),
+        vote_fractions=(0.5,),
+    )
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 500.0, 40, cn0_dbhz=60.0)], seed=0
+    )
+    blind = [PrnResult(prn=1, doppler_hz=0.0, code_phase=40)]
+    first = calibrator.refine(scenario.samples, blind)
+    calls = {"n": 0}
+    original = calibrator.refiner.resolve
+
+    def counted(*args, **kwargs):
+        calls["n"] += 1
+        return original(*args, **kwargs)
+
+    calibrator.refiner.resolve = counted
+    assert calibrator.refine(scenario.samples, blind) == first
+    assert calls["n"] == 0
+
+
+def test_a_new_record_gets_its_own_sweeps():
+    config = make_config(n_codes=4)
+    calibrator = RefinedCamCalibrator(
+        SegmentedHdCamClassifier(config, search_mode="table"),
+        sigma_grid=(3.0,),
+        vote_fractions=(0.5,),
+    )
+    first = generate_synthetic(
+        config, [SatelliteTruth(1, 500.0, 40, cn0_dbhz=60.0)], seed=0
+    )
+    second = generate_synthetic(
+        config, [SatelliteTruth(1, -500.0, 40, cn0_dbhz=60.0)], seed=1
+    )
+    blind = [PrnResult(prn=1, doppler_hz=0.0, code_phase=40)]
+    calibrator.prepare(first)
+    assert calibrator.refine(first.samples, blind)[0].doppler_hz == 500.0
+    calibrator.prepare(second)
+    assert calibrator.refine(second.samples, blind)[0].doppler_hz == -500.0
+
+
+def test_the_refiner_counter_is_left_alone_so_it_cannot_be_read_as_a_cost():
+    # The memo means a calibration run asks for far fewer sweeps than the grid
+    # implies. Section 4.7 costs the second stage on set B instead.
+    config = make_config(n_codes=4)
+    calibrator = RefinedCamCalibrator(
+        SegmentedHdCamClassifier(config, search_mode="table"),
+        sigma_grid=(3.0,),
+        vote_fractions=(0.5,),
+    )
+    scenario = generate_synthetic(
+        config, [SatelliteTruth(1, 500.0, 40, cn0_dbhz=60.0)], seed=0
+    )
+    calibrator.replay_all(calibrator.prepare(scenario))
+    assert calibrator.refiner.cost().n_results == 0
+
+
+# --------------------------------------------------------------------------
+# freezing the pick
+# --------------------------------------------------------------------------
+
+
+def test_a_frozen_cam_setting_carries_both_knobs_and_the_rate_it_was_matched_at():
+    frozen = FrozenSetting.from_candidate("baseline", a_candidate(), 1e-2)
+    assert (frozen.hd_threshold, frozen.min_votes) == (900, 3)
+    assert frozen.peak_ratio is None
+    assert frozen.target_pfa == 1e-2
+    assert frozen.pfa_upper == a_candidate().pfa_upper
+
+
+def test_a_frozen_reference_setting_carries_its_ratio_instead():
+    candidate = RatioCandidate(peak_ratio=2.5, n_trials=10, n_detected=9, n_false=0)
+    frozen = FrozenSetting.from_candidate("fft", candidate, 1e-2)
+    assert frozen.peak_ratio == 2.5
+    assert frozen.hd_threshold is None and frozen.min_votes is None
+
+
+def test_applying_a_frozen_setting_moves_both_cam_knobs():
+    classifier = OneBitHdCamClassifier(make_config())
+    frozen = FrozenSetting(
+        family="baseline", n_records=1, target_pfa=1e-2, hd_threshold=177, min_votes=2
+    )
+    assert frozen.apply(classifier) is classifier
+    assert (classifier.hd_threshold, classifier.min_votes) == (177, 2)
+
+
+def test_applying_a_frozen_setting_moves_the_reference_knob():
+    classifier = FftAcqClassifier(make_config(), peak_ratio=2.0)
+    frozen = FrozenSetting(
+        family="fft", n_records=1, target_pfa=1e-2, peak_ratio=4.5
+    )
+    assert frozen.apply(classifier).peak_ratio == 4.5
+
+
+def test_a_frozen_setting_with_no_knobs_at_all_is_refused():
+    frozen = FrozenSetting(family="nothing", n_records=1, target_pfa=1e-2)
+    with pytest.raises(AssertionError):
+        frozen.apply(OneBitHdCamClassifier(make_config()))
+
+
+def test_the_frozen_settings_survive_a_round_trip_through_json(tmp_path):
+    path = tmp_path / "calibration.json"
+    settings = {
+        "baseline": FrozenSetting.from_candidate(
+            "baseline", a_candidate(n_prn_trials=3100, n_prn_false=1), 1e-2
+        ),
+        "differential": None,
+    }
+    save_calibration(path, settings, meta={"n_skies": 20})
+    read = load_calibration(path)
+    assert read["meta"] == {"n_skies": 20}
+    assert read["settings"]["baseline"] == settings["baseline"]
+    assert read["settings"]["differential"] is None
+
+
+def test_a_family_that_found_nothing_is_recorded_rather_than_dropped(tmp_path):
+    # "No threshold met the target" is a result; a missing key is not.
+    path = tmp_path / "calibration.json"
+    save_calibration(path, {"dead": None})
+    assert "dead" in load_calibration(path)["settings"]
+
+
+def test_an_unmeasurable_rate_is_written_as_null_and_read_back_as_nan(tmp_path):
+    path = tmp_path / "calibration.json"
+    frozen = FrozenSetting.from_candidate("baseline", a_candidate(), 1e-2)
+    assert np.isnan(frozen.pfa_per_prn)
+    save_calibration(path, {"baseline": frozen})
+    assert "NaN" not in path.read_text()
+    assert np.isnan(load_calibration(path)["settings"]["baseline"].pfa_per_prn)
