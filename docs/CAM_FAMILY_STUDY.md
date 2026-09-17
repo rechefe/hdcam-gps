@@ -407,6 +407,35 @@ record-average scaling only as the sampling design. No simulator patch.
 | 4 | `src/hdcam_gps/compare.py` — `compare(classifiers, scenarios, target_pfa) -> Comparison` running §4.3, §4.4 and §4.7 on set B and joining them into one table | `notebooks/family_comparison.ipynb` |
 | 5 | README family table replaces the two-classifier table; PROPOSAL step 4 gets the measured numbers | — |
 
+### The phase 1 verdict
+
+20 calibration skies at three record scalings, 60 records, 642 satellites. Read at the
+45 dB-Hz bin the kill rule names, from `docs/screen_results.json`:
+
+| family | rows x cols | d' | vs baseline | required tolerance | verdict |
+|---|---|---|---|---|---|
+| baseline | 1344 x 2046 | 6.25 | 1.00x | 45.7% | reference |
+| thermometer | 1344 x 6138 | 6.88 | 1.10x | **36.1%** | survives |
+| code-only (quadrant) | 64 x 2046 | 5.47 | 0.87x | 46.4% | survives |
+| segmented | 20160 x 128 | 3.50 | 0.56x | 38.3%* | survives, by 12% |
+| differential | 128 x 2046 | 1.15 | 0.18x | 49.7% | **dead** |
+
+**The answer to risk 1: 36% to 50%, for every arrangement of the CAM tried, against 12.5%
+demonstrated in silicon.** The gap is a factor of three to four and no rearrangement closes
+it. The thermometer family is the best of them and pays three times the area for it —
+and its `d'` beats the baseline, so the worry in §3 that the extra bits would only describe
+the noise is answered: they do not.
+
+\* The segmented tolerance is the distance to the **best of 15 sub-rows across 4 looks**,
+which is what §4.6's `D_true` means for a hypothesis spread over K rows. A best-of-60
+statistic is not comparable with the baseline's best-of-8, and the m-of-K rule the family
+decides with needs `min_segments` of them rather than one. Treat 38% as a lower bound.
+
+**Differential is dead exactly as §3 predicted**, on the relative half of the rule rather
+than the absolute one. Its `D_wrong` is 1023.0, which is `n_columns / 2` to four figures,
+and its `D_true` at 45 dB-Hz is 997 — the noise x noise penalty leaves almost nothing.
+Per §8 it still ships its screen plot and this paragraph.
+
 New test files follow `test_hdcam_acq.py` conventions exactly: module docstring saying what
 is and is not covered, local `make_config`, banner comments, `fs_hz=204.6e3`, long
 sentence-style names.

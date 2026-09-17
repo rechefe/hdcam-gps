@@ -1,0 +1,968 @@
+{
+  "config": {
+    "fs_hz": 1023000.0,
+    "n_prn": 32,
+    "doppler_min_hz": -5000.0,
+    "doppler_max_hz": 5000.0,
+    "doppler_step_hz": 500.0,
+    "n_codes": 10,
+    "n_calibration_skies": 20,
+    "scalings_dbhz": [
+      54.0,
+      45.0,
+      36.0
+    ]
+  },
+  "families": [
+    {
+      "family": "baseline",
+      "n_rows": 1344,
+      "n_columns": 2046,
+      "n_records": 60,
+      "n_looks": 5781,
+      "wrong_mean": 997.4790430305067,
+      "wrong_sd": 13.629606160313132,
+      "n_wrong": 494248608,
+      "noise_mean": 1023.0,
+      "noise_sd": 22.666542971831827,
+      "seconds": 97.36113787500017,
+      "bins": [
+        {
+          "cn0_dbhz": 29.0,
+          "n_looks": 72,
+          "true_mean": 975.7361111111111,
+          "true_percentile": 989.0,
+          "d_prime": 1.5952722084301254,
+          "tolerance_fraction": 0.4833822091886608,
+          "resolution_fraction": 0.0041442048047442125,
+          "resolution_sigma": 0.6221047718309022
+        },
+        {
+          "cn0_dbhz": 31.0,
+          "n_looks": 469,
+          "true_mean": 976.2494669509595,
+          "true_percentile": 993.0,
+          "d_prime": 1.5576074488024285,
+          "tolerance_fraction": 0.48533724340175954,
+          "resolution_fraction": 0.0021891705916454837,
+          "resolution_sigma": 0.32862600561040395
+        },
+        {
+          "cn0_dbhz": 33.0,
+          "n_looks": 333,
+          "true_mean": 974.021021021021,
+          "true_percentile": 991.0,
+          "d_prime": 1.7211078393292818,
+          "tolerance_fraction": 0.4843597262952102,
+          "resolution_fraction": 0.0031666876981948484,
+          "resolution_sigma": 0.47536538872065304
+        },
+        {
+          "cn0_dbhz": 35.0,
+          "n_looks": 279,
+          "true_mean": 970.2078853046595,
+          "true_percentile": 988.0,
+          "d_prime": 2.0008764306965583,
+          "tolerance_fraction": 0.48289345063538613,
+          "resolution_fraction": 0.004632963358018895,
+          "resolution_sigma": 0.6954744633860267
+        },
+        {
+          "cn0_dbhz": 37.0,
+          "n_looks": 315,
+          "true_mean": 965.3714285714286,
+          "true_percentile": 985.0,
+          "d_prime": 2.3557257694334126,
+          "tolerance_fraction": 0.4814271749755621,
+          "resolution_fraction": 0.006099239017842942,
+          "resolution_sigma": 0.9155835380514004
+        },
+        {
+          "cn0_dbhz": 39.0,
+          "n_looks": 676,
+          "true_mean": 956.5177514792899,
+          "true_percentile": 978.0,
+          "d_prime": 3.005317326812301,
+          "tolerance_fraction": 0.4780058651026393,
+          "resolution_fraction": 0.009520548890765718,
+          "resolution_sigma": 1.4291713789372722
+        },
+        {
+          "cn0_dbhz": 41.0,
+          "n_looks": 513,
+          "true_mean": 950.0253411306043,
+          "true_percentile": 976.0,
+          "d_prime": 3.481663471544667,
+          "tolerance_fraction": 0.47702834799608995,
+          "resolution_fraction": 0.010498065997315082,
+          "resolution_sigma": 1.5759107620475212
+        },
+        {
+          "cn0_dbhz": 43.0,
+          "n_looks": 297,
+          "true_mean": 933.3569023569023,
+          "true_percentile": 961.4000000000001,
+          "d_prime": 4.704621683076658,
+          "tolerance_fraction": 0.46989247311827964,
+          "resolution_fraction": 0.0176339408751254,
+          "resolution_sigma": 2.647108258752333
+        },
+        {
+          "cn0_dbhz": 45.0,
+          "n_looks": 261,
+          "true_mean": 912.3103448275862,
+          "true_percentile": 936.0,
+          "d_prime": 6.2488011172997675,
+          "tolerance_fraction": 0.4574780058651026,
+          "resolution_fraction": 0.030048408128302374,
+          "resolution_sigma": 4.510698424252503
+        },
+        {
+          "cn0_dbhz": 47.0,
+          "n_looks": 414,
+          "true_mean": 893.5458937198067,
+          "true_percentile": 928.0,
+          "d_prime": 7.625543107278761,
+          "tolerance_fraction": 0.45356793743890517,
+          "resolution_fraction": 0.033958476554499836,
+          "resolution_sigma": 5.0976559566935
+        },
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 766,
+          "true_mean": 896.0195822454308,
+          "true_percentile": 941.0,
+          "d_prime": 7.4440493431502714,
+          "tolerance_fraction": 0.45992179863147603,
+          "resolution_fraction": 0.027604615361928965,
+          "resolution_sigma": 4.14384996647688
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 333,
+          "true_mean": 893.5855855855856,
+          "true_percentile": 922.8,
+          "d_prime": 7.622630927329317,
+          "tolerance_fraction": 0.4510263929618768,
+          "resolution_fraction": 0.036500021031528204,
+          "resolution_sigma": 5.479178352780151
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 279,
+          "true_mean": 858.6487455197133,
+          "true_percentile": 888.0,
+          "d_prime": 10.185936106873083,
+          "tolerance_fraction": 0.4340175953079179,
+          "resolution_fraction": 0.053508818685487125,
+          "resolution_sigma": 8.032443618898482
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 306,
+          "true_mean": 817.4346405228758,
+          "true_percentile": 851.0,
+          "d_prime": 13.209802278211567,
+          "tolerance_fraction": 0.41593352883675466,
+          "resolution_fraction": 0.07159288515665037,
+          "resolution_sigma": 10.74712220643809
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 414,
+          "true_mean": 760.7149758454107,
+          "true_percentile": 799.0,
+          "d_prime": 17.37130658070728,
+          "tolerance_fraction": 0.39051808406647115,
+          "resolution_fraction": 0.09700832992693385,
+          "resolution_sigma": 14.562346167304566
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 54,
+          "true_mean": 715.4074074074074,
+          "true_percentile": 751.4,
+          "d_prime": 20.695508902116277,
+          "tolerance_fraction": 0.3672531769305963,
+          "resolution_fraction": 0.12027323706280874,
+          "resolution_sigma": 18.054743485328498
+        }
+      ]
+    },
+    {
+      "family": "code-only (quadrant)",
+      "n_rows": 64,
+      "n_columns": 2046,
+      "n_records": 60,
+      "n_looks": 5781,
+      "wrong_mean": 997.4802046179966,
+      "wrong_sd": 13.629440112239825,
+      "n_wrong": 494248608,
+      "noise_mean": 1023.0,
+      "noise_sd": 22.655404079035424,
+      "seconds": 1499.4648754300001,
+      "bins": [
+        {
+          "cn0_dbhz": 29.0,
+          "n_looks": 72,
+          "true_mean": 982.8333333333334,
+          "true_percentile": 998.0,
+          "d_prime": 1.0746495207466162,
+          "tolerance_fraction": 0.48778103616813295,
+          "resolution_fraction": -0.00025405443890683994,
+          "resolution_sigma": -0.03813769147689316
+        },
+        {
+          "cn0_dbhz": 31.0,
+          "n_looks": 469,
+          "true_mean": 980.4264392324094,
+          "true_percentile": 997.2,
+          "d_prime": 1.2512447499785553,
+          "tolerance_fraction": 0.48739002932551323,
+          "resolution_fraction": 0.0001369524037128837,
+          "resolution_sigma": 0.020558776860167882
+        },
+        {
+          "cn0_dbhz": 33.0,
+          "n_looks": 333,
+          "true_mean": 980.1441441441441,
+          "true_percentile": 996.0,
+          "d_prime": 1.2719569058661464,
+          "tolerance_fraction": 0.4868035190615836,
+          "resolution_fraction": 0.0007234626676425247,
+          "resolution_sigma": 0.10860347936576778
+        },
+        {
+          "cn0_dbhz": 35.0,
+          "n_looks": 279,
+          "true_mean": 977.3440860215054,
+          "true_percentile": 995.0,
+          "d_prime": 1.4773988095378987,
+          "tolerance_fraction": 0.4863147605083089,
+          "resolution_fraction": 0.001212221220917207,
+          "resolution_sigma": 0.18197406478709824
+        },
+        {
+          "cn0_dbhz": 37.0,
+          "n_looks": 315,
+          "true_mean": 972.0952380952381,
+          "true_percentile": 991.0,
+          "d_prime": 1.862509854675669,
+          "tolerance_fraction": 0.4843597262952102,
+          "resolution_fraction": 0.0031672554340159364,
+          "resolution_sigma": 0.4754564064724201
+        },
+        {
+          "cn0_dbhz": 39.0,
+          "n_looks": 676,
+          "true_mean": 964.0680473372781,
+          "true_percentile": 988.0,
+          "d_prime": 2.4514695398758835,
+          "tolerance_fraction": 0.48289345063538613,
+          "resolution_fraction": 0.004633531093839983,
+          "resolution_sigma": 0.6955681627364115
+        },
+        {
+          "cn0_dbhz": 41.0,
+          "n_looks": 513,
+          "true_mean": 956.495126705653,
+          "true_percentile": 983.0,
+          "d_prime": 3.0070991599674928,
+          "tolerance_fraction": 0.4804496578690127,
+          "resolution_fraction": 0.007077323860213394,
+          "resolution_sigma": 1.062421089843064
+        },
+        {
+          "cn0_dbhz": 43.0,
+          "n_looks": 297,
+          "true_mean": 942.7306397306397,
+          "true_percentile": 971.4000000000001,
+          "d_prime": 4.017007627348494,
+          "tolerance_fraction": 0.47478005865102646,
+          "resolution_fraction": 0.012746923078199666,
+          "resolution_sigma": 1.9135198807304905
+        },
+        {
+          "cn0_dbhz": 45.0,
+          "n_looks": 261,
+          "true_mean": 922.9808429118774,
+          "true_percentile": 950.0,
+          "d_prime": 5.466061781893415,
+          "tolerance_fraction": 0.46432062561094817,
+          "resolution_fraction": 0.02320635611827791,
+          "resolution_sigma": 3.483650408746969
+        },
+        {
+          "cn0_dbhz": 47.0,
+          "n_looks": 414,
+          "true_mean": 905.4830917874397,
+          "true_percentile": 939.0,
+          "d_prime": 6.749882025450155,
+          "tolerance_fraction": 0.45894428152492667,
+          "resolution_fraction": 0.028582700204299417,
+          "resolution_sigma": 4.290726848381604
+        },
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 766,
+          "true_mean": 906.5143603133159,
+          "true_percentile": 952.0,
+          "d_prime": 6.674217249980021,
+          "tolerance_fraction": 0.46529814271749753,
+          "resolution_fraction": 0.022228839011728545,
+          "resolution_sigma": 3.336909237904308
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 333,
+          "true_mean": 903.5945945945946,
+          "true_percentile": 936.0,
+          "d_prime": 6.888442170055738,
+          "tolerance_fraction": 0.4574780058651026,
+          "resolution_fraction": 0.030048975864123462,
+          "resolution_sigma": 4.5108386046455955
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 279,
+          "true_mean": 871.0,
+          "true_percentile": 903.2,
+          "d_prime": 9.279926657032076,
+          "tolerance_fraction": 0.4414467253176931,
+          "resolution_fraction": 0.04608025641153302,
+          "resolution_sigma": 6.917393806465232
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 306,
+          "true_mean": 836.2222222222222,
+          "true_percentile": 871.5,
+          "d_prime": 11.831592572240572,
+          "tolerance_fraction": 0.42595307917888564,
+          "resolution_fraction": 0.061573902550340474,
+          "resolution_sigma": 9.243241364321412
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 414,
+          "true_mean": 780.6159420289855,
+          "true_percentile": 830.0,
+          "d_prime": 15.91145790312088,
+          "tolerance_fraction": 0.4056695992179863,
+          "resolution_fraction": 0.08185738251123979,
+          "resolution_sigma": 12.288120659306625
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 54,
+          "true_mean": 735.3148148148148,
+          "true_percentile": 793.6,
+          "d_prime": 19.23522812707075,
+          "tolerance_fraction": 0.3878787878787879,
+          "resolution_fraction": 0.09964819385043822,
+          "resolution_sigma": 14.958809968643052
+        }
+      ]
+    },
+    {
+      "family": "code-only (exact)",
+      "n_rows": 64,
+      "n_columns": 2046,
+      "n_records": 12,
+      "n_looks": 1108,
+      "wrong_mean": 997.489387753064,
+      "wrong_sd": 13.631836134542477,
+      "n_wrong": 100938096,
+      "noise_mean": 1023.0,
+      "noise_sd": 22.504160856592165,
+      "seconds": 347.19915008399994,
+      "bins": [
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 235,
+          "true_mean": 917.6936170212766,
+          "true_percentile": 946.0,
+          "d_prime": 5.853633358281673,
+          "tolerance_fraction": 0.46236559139784944,
+          "resolution_fraction": 0.02516587866718669,
+          "resolution_sigma": 3.777142509994828
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 216,
+          "true_mean": 890.875,
+          "true_percentile": 925.0,
+          "d_prime": 7.820985133683332,
+          "tolerance_fraction": 0.4521016617790811,
+          "resolution_fraction": 0.03542980828595502,
+          "resolution_sigma": 5.317653985685687
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 207,
+          "true_mean": 854.7826086956521,
+          "true_percentile": 892.0,
+          "d_prime": 10.468639561753468,
+          "tolerance_fraction": 0.4359726295210166,
+          "resolution_fraction": 0.05155884054401953,
+          "resolution_sigma": 7.738457733199893
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 180,
+          "true_mean": 809.1944444444445,
+          "true_percentile": 848.1,
+          "d_prime": 13.812881951499428,
+          "tolerance_fraction": 0.4145161290322581,
+          "resolution_fraction": 0.07301534103277807,
+          "resolution_sigma": 10.958860294286971
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 216,
+          "true_mean": 754.1388888888889,
+          "true_percentile": 804.5,
+          "d_prime": 17.85163029120747,
+          "tolerance_fraction": 0.3932062561094819,
+          "resolution_fraction": 0.09432521395555424,
+          "resolution_sigma": 14.15725554857847
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 36,
+          "true_mean": 709.6388888888889,
+          "true_percentile": 756.5,
+          "d_prime": 21.11604746588572,
+          "tolerance_fraction": 0.36974584555229717,
+          "resolution_fraction": 0.11778562451273898,
+          "resolution_sigma": 17.678424635871863
+        }
+      ]
+    },
+    {
+      "family": "thermometer",
+      "n_rows": 1344,
+      "n_columns": 6138,
+      "n_records": 60,
+      "n_looks": 5781,
+      "wrong_mean": 2336.4940317586083,
+      "wrong_sd": 23.690613848669663,
+      "n_wrong": 494248608,
+      "noise_mean": 2376.943359375,
+      "noise_sd": 38.13428536829473,
+      "seconds": 210.25540766599943,
+      "bins": [
+        {
+          "cn0_dbhz": 29.0,
+          "n_looks": 72,
+          "true_mean": 2303.0,
+          "true_percentile": 2332.8,
+          "d_prime": 1.4138102107678898,
+          "tolerance_fraction": 0.38005865102639297,
+          "resolution_fraction": 0.0006018298726960185,
+          "resolution_sigma": 0.1559280727044394
+        },
+        {
+          "cn0_dbhz": 31.0,
+          "n_looks": 469,
+          "true_mean": 2300.3880597014927,
+          "true_percentile": 2332.0,
+          "d_prime": 1.5240623264450857,
+          "tolerance_fraction": 0.37992831541218636,
+          "resolution_fraction": 0.0007321654869026301,
+          "resolution_sigma": 0.18969672070615023
+        },
+        {
+          "cn0_dbhz": 33.0,
+          "n_looks": 333,
+          "true_mean": 2298.828828828829,
+          "true_percentile": 2334.0,
+          "d_prime": 1.5898787245605446,
+          "tolerance_fraction": 0.38025415444770283,
+          "resolution_fraction": 0.0004063264513861753,
+          "resolution_sigma": 0.10527510070189233
+        },
+        {
+          "cn0_dbhz": 35.0,
+          "n_looks": 279,
+          "true_mean": 2287.820788530466,
+          "true_percentile": 2319.2,
+          "d_prime": 2.0545370220905275,
+          "tolerance_fraction": 0.377842945584881,
+          "resolution_fraction": 0.0028175353142079708,
+          "resolution_sigma": 0.7299950887334085
+        },
+        {
+          "cn0_dbhz": 37.0,
+          "n_looks": 315,
+          "true_mean": 2276.673015873016,
+          "true_percentile": 2316.0,
+          "d_prime": 2.5250935356810724,
+          "tolerance_fraction": 0.37732160312805474,
+          "resolution_fraction": 0.003338877771034269,
+          "resolution_sigma": 0.8650696807402134
+        },
+        {
+          "cn0_dbhz": 39.0,
+          "n_looks": 676,
+          "true_mean": 2258.298816568047,
+          "true_percentile": 2299.0,
+          "d_prime": 3.3006833714843644,
+          "tolerance_fraction": 0.37455197132616486,
+          "resolution_fraction": 0.006108509572924136,
+          "resolution_sigma": 1.5826534507764054
+        },
+        {
+          "cn0_dbhz": 41.0,
+          "n_looks": 513,
+          "true_mean": 2246.187134502924,
+          "true_percentile": 2293.0,
+          "d_prime": 3.8119272819414727,
+          "tolerance_fraction": 0.3735744542196155,
+          "resolution_fraction": 0.0070860266794735005,
+          "resolution_sigma": 1.8359183107891792
+        },
+        {
+          "cn0_dbhz": 43.0,
+          "n_looks": 297,
+          "true_mean": 2212.7070707070707,
+          "true_percentile": 2260.4,
+          "d_prime": 5.225147893687393,
+          "tolerance_fraction": 0.3682632779406973,
+          "resolution_fraction": 0.012397202958391699,
+          "resolution_sigma": 3.2119907168585793
+        },
+        {
+          "cn0_dbhz": 45.0,
+          "n_looks": 261,
+          "true_mean": 2173.425287356322,
+          "true_percentile": 2215.0,
+          "d_prime": 6.883263787250643,
+          "tolerance_fraction": 0.36086673183447376,
+          "resolution_fraction": 0.01979374906461524,
+          "resolution_sigma": 5.128361490955237
+        },
+        {
+          "cn0_dbhz": 47.0,
+          "n_looks": 414,
+          "true_mean": 2136.06038647343,
+          "true_percentile": 2201.0,
+          "d_prime": 8.46046651916678,
+          "tolerance_fraction": 0.35858585858585856,
+          "resolution_fraction": 0.022074622313230423,
+          "resolution_sigma": 5.719312830985042
+        },
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 766,
+          "true_mean": 2140.251958224543,
+          "true_percentile": 2222.5,
+          "d_prime": 8.283536880370244,
+          "tolerance_fraction": 0.36208862821766047,
+          "resolution_fraction": 0.018571852681428535,
+          "resolution_sigma": 4.81178041593927
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 333,
+          "true_mean": 2138.900900900901,
+          "true_percentile": 2195.0,
+          "d_prime": 8.340566104360487,
+          "tolerance_fraction": 0.3576083414793092,
+          "resolution_fraction": 0.02305213941977979,
+          "resolution_sigma": 5.9725776909978165
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 279,
+          "true_mean": 2067.2795698924733,
+          "true_percentile": 2117.2,
+          "d_prime": 11.363760499656815,
+          "tolerance_fraction": 0.3449332029977191,
+          "resolution_fraction": 0.03572727790136991,
+          "resolution_sigma": 9.256578709163456
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 306,
+          "true_mean": 1988.4313725490197,
+          "true_percentile": 2051.5,
+          "d_prime": 14.692006776731706,
+          "tolerance_fraction": 0.3342293906810036,
+          "resolution_fraction": 0.046431090218085426,
+          "resolution_sigma": 12.02982892630332
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 414,
+          "true_mean": 1877.816425120773,
+          "true_percentile": 1946.0,
+          "d_prime": 19.36115330602091,
+          "tolerance_fraction": 0.3170413815575106,
+          "resolution_fraction": 0.06361909934157842,
+          "resolution_sigma": 16.483069381527923
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 54,
+          "true_mean": 1787.6666666666667,
+          "true_percentile": 1850.1,
+          "d_prime": 23.166447631865005,
+          "tolerance_fraction": 0.30141739980449656,
+          "resolution_fraction": 0.07924308109459245,
+          "resolution_sigma": 20.531086060732093
+        }
+      ]
+    },
+    {
+      "family": "segmented",
+      "n_rows": 20160,
+      "n_columns": 128,
+      "n_records": 60,
+      "n_looks": 6420,
+      "wrong_mean": 57.642363657163585,
+      "wrong_sd": 3.4383453323554125,
+      "n_wrong": 8185858380,
+      "noise_mean": 64.0,
+      "noise_sd": 5.651361083796926,
+      "seconds": 493.6530995080002,
+      "bins": [
+        {
+          "cn0_dbhz": 29.0,
+          "n_looks": 80,
+          "true_mean": 47.575,
+          "true_percentile": 50.0,
+          "d_prime": 2.927967578598922,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 31.0,
+          "n_looks": 520,
+          "true_mean": 47.753846153846155,
+          "true_percentile": 50.0,
+          "d_prime": 2.8759523978772012,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 33.0,
+          "n_looks": 370,
+          "true_mean": 47.435135135135134,
+          "true_percentile": 50.0,
+          "d_prime": 2.968645535972405,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 35.0,
+          "n_looks": 310,
+          "true_mean": 47.56774193548387,
+          "true_percentile": 50.0,
+          "d_prime": 2.9300784964429876,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 37.0,
+          "n_looks": 350,
+          "true_mean": 47.425714285714285,
+          "true_percentile": 50.0,
+          "d_prime": 2.971385472921785,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 39.0,
+          "n_looks": 750,
+          "true_mean": 47.601333333333336,
+          "true_percentile": 50.0,
+          "d_prime": 2.920308855932082,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 41.0,
+          "n_looks": 570,
+          "true_mean": 46.86842105263158,
+          "true_percentile": 50.0,
+          "d_prime": 3.1334672824010363,
+          "tolerance_fraction": 0.390625,
+          "resolution_fraction": 0.05970596607159051,
+          "resolution_sigma": 2.222686472253862
+        },
+        {
+          "cn0_dbhz": 43.0,
+          "n_looks": 330,
+          "true_mean": 46.28787878787879,
+          "true_percentile": 49.0,
+          "d_prime": 3.302310783747394,
+          "tolerance_fraction": 0.3828125,
+          "resolution_fraction": 0.06751846607159051,
+          "resolution_sigma": 2.5135240418806912
+        },
+        {
+          "cn0_dbhz": 45.0,
+          "n_looks": 290,
+          "true_mean": 45.62413793103448,
+          "true_percentile": 49.0,
+          "d_prime": 3.4953515614140214,
+          "tolerance_fraction": 0.3828125,
+          "resolution_fraction": 0.06751846607159051,
+          "resolution_sigma": 2.5135240418806912
+        },
+        {
+          "cn0_dbhz": 47.0,
+          "n_looks": 460,
+          "true_mean": 44.72826086956522,
+          "true_percentile": 48.0,
+          "d_prime": 3.755906268656167,
+          "tolerance_fraction": 0.375,
+          "resolution_fraction": 0.07533096607159051,
+          "resolution_sigma": 2.8043616115075203
+        },
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 850,
+          "true_mean": 44.88117647058824,
+          "true_percentile": 48.0,
+          "d_prime": 3.7114326668966067,
+          "tolerance_fraction": 0.375,
+          "resolution_fraction": 0.07533096607159051,
+          "resolution_sigma": 2.8043616115075203
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 370,
+          "true_mean": 44.69189189189189,
+          "true_percentile": 48.0,
+          "d_prime": 3.76648373373249,
+          "tolerance_fraction": 0.375,
+          "resolution_fraction": 0.07533096607159051,
+          "resolution_sigma": 2.8043616115075203
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 310,
+          "true_mean": 42.725806451612904,
+          "true_percentile": 46.0,
+          "d_prime": 4.338295244861925,
+          "tolerance_fraction": 0.359375,
+          "resolution_fraction": 0.09095596607159051,
+          "resolution_sigma": 3.3860367507611784
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 340,
+          "true_mean": 40.35294117647059,
+          "true_percentile": 44.0,
+          "d_prime": 5.0284136145362135,
+          "tolerance_fraction": 0.34375,
+          "resolution_fraction": 0.10658096607159051,
+          "resolution_sigma": 3.9677118900148365
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 460,
+          "true_mean": 36.72826086956522,
+          "true_percentile": 41.0,
+          "d_prime": 6.0826068256707995,
+          "tolerance_fraction": 0.3203125,
+          "resolution_fraction": 0.1300184660715905,
+          "resolution_sigma": 4.840224598895324
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 60,
+          "true_mean": 34.1,
+          "true_percentile": 38.0,
+          "d_prime": 6.847003829320444,
+          "tolerance_fraction": 0.296875,
+          "resolution_fraction": 0.1534559660715905,
+          "resolution_sigma": 5.712737307775811
+        }
+      ]
+    },
+    {
+      "family": "differential",
+      "n_rows": 128,
+      "n_columns": 2046,
+      "n_records": 60,
+      "n_looks": 5715,
+      "wrong_mean": 1023.0,
+      "wrong_sd": 22.614709955891517,
+      "n_wrong": 46549872,
+      "noise_mean": 1023.0,
+      "noise_sd": 22.448220584756267,
+      "seconds": 8.876070266999704,
+      "bins": [
+        {
+          "cn0_dbhz": 29.0,
+          "n_looks": 71,
+          "true_mean": 1005.9718309859155,
+          "true_percentile": 1025.0,
+          "d_prime": 0.752968711396113,
+          "tolerance_fraction": 0.5009775171065494,
+          "resolution_fraction": -0.0009775171065493646,
+          "resolution_sigma": -0.08843801242204152
+        },
+        {
+          "cn0_dbhz": 31.0,
+          "n_looks": 462,
+          "true_mean": 1003.6861471861472,
+          "true_percentile": 1026.0,
+          "d_prime": 0.854039377534498,
+          "tolerance_fraction": 0.501466275659824,
+          "resolution_fraction": -0.001466275659824047,
+          "resolution_sigma": -0.13265701863306228
+        },
+        {
+          "cn0_dbhz": 33.0,
+          "n_looks": 326,
+          "true_mean": 1004.4815950920246,
+          "true_percentile": 1026.0,
+          "d_prime": 0.8188654616439626,
+          "tolerance_fraction": 0.501466275659824,
+          "resolution_fraction": -0.001466275659824047,
+          "resolution_sigma": -0.13265701863306228
+        },
+        {
+          "cn0_dbhz": 35.0,
+          "n_looks": 277,
+          "true_mean": 1003.4259927797834,
+          "true_percentile": 1025.0,
+          "d_prime": 0.8655431468453219,
+          "tolerance_fraction": 0.5009775171065494,
+          "resolution_fraction": -0.0009775171065493646,
+          "resolution_sigma": -0.08843801242204152
+        },
+        {
+          "cn0_dbhz": 37.0,
+          "n_looks": 313,
+          "true_mean": 1001.8083067092651,
+          "true_percentile": 1023.0,
+          "d_prime": 0.9370756172450518,
+          "tolerance_fraction": 0.5,
+          "resolution_fraction": 0.0,
+          "resolution_sigma": 0.0
+        },
+        {
+          "cn0_dbhz": 39.0,
+          "n_looks": 669,
+          "true_mean": 1002.286995515695,
+          "true_percentile": 1024.0,
+          "d_prime": 0.9159084739403826,
+          "tolerance_fraction": 0.5004887585532747,
+          "resolution_fraction": -0.0004887585532746823,
+          "resolution_sigma": -0.04421900621102076
+        },
+        {
+          "cn0_dbhz": 41.0,
+          "n_looks": 505,
+          "true_mean": 1000.3207920792079,
+          "true_percentile": 1021.6,
+          "d_prime": 1.0028520359105382,
+          "tolerance_fraction": 0.49931573802541546,
+          "resolution_fraction": 0.0006842619745845442,
+          "resolution_sigma": 0.06190660869542806
+        },
+        {
+          "cn0_dbhz": 43.0,
+          "n_looks": 292,
+          "true_mean": 1000.445205479452,
+          "true_percentile": 1022.0,
+          "d_prime": 0.9973505989924065,
+          "tolerance_fraction": 0.4995112414467253,
+          "resolution_fraction": 0.0004887585532746823,
+          "resolution_sigma": 0.04421900621102076
+        },
+        {
+          "cn0_dbhz": 45.0,
+          "n_looks": 259,
+          "true_mean": 997.023166023166,
+          "true_percentile": 1017.0,
+          "d_prime": 1.1486697829642765,
+          "tolerance_fraction": 0.4970674486803519,
+          "resolution_fraction": 0.002932551319648094,
+          "resolution_sigma": 0.26531403726612457
+        },
+        {
+          "cn0_dbhz": 47.0,
+          "n_looks": 413,
+          "true_mean": 992.8765133171913,
+          "true_percentile": 1015.0,
+          "d_prime": 1.3320306447247179,
+          "tolerance_fraction": 0.49608993157380255,
+          "resolution_fraction": 0.0039100684261974585,
+          "resolution_sigma": 0.3537520496881661
+        },
+        {
+          "cn0_dbhz": 49.0,
+          "n_looks": 756,
+          "true_mean": 991.5555555555555,
+          "true_percentile": 1015.0,
+          "d_prime": 1.3904420841909868,
+          "tolerance_fraction": 0.49608993157380255,
+          "resolution_fraction": 0.0039100684261974585,
+          "resolution_sigma": 0.3537520496881661
+        },
+        {
+          "cn0_dbhz": 51.0,
+          "n_looks": 326,
+          "true_mean": 993.9355828220858,
+          "true_percentile": 1016.0,
+          "d_prime": 1.2851996437098843,
+          "tolerance_fraction": 0.4965786901270772,
+          "resolution_fraction": 0.003421309872922776,
+          "resolution_sigma": 0.30953304347714533
+        },
+        {
+          "cn0_dbhz": 53.0,
+          "n_looks": 277,
+          "true_mean": 987.1949458483755,
+          "true_percentile": 1010.0,
+          "d_prime": 1.5832639119166192,
+          "tolerance_fraction": 0.49364613880742914,
+          "resolution_fraction": 0.00635386119257087,
+          "resolution_sigma": 0.5748470807432698
+        },
+        {
+          "cn0_dbhz": 55.0,
+          "n_looks": 304,
+          "true_mean": 965.0032894736842,
+          "true_percentile": 994.0,
+          "d_prime": 2.5645569029819333,
+          "tolerance_fraction": 0.4858260019550342,
+          "resolution_fraction": 0.014173998044965786,
+          "resolution_sigma": 1.2823511801196021
+        },
+        {
+          "cn0_dbhz": 57.0,
+          "n_looks": 412,
+          "true_mean": 928.7281553398059,
+          "true_percentile": 969.0,
+          "d_prime": 4.1686072845535085,
+          "tolerance_fraction": 0.4736070381231672,
+          "resolution_fraction": 0.026392961876832845,
+          "resolution_sigma": 2.387826335395121
+        },
+        {
+          "cn0_dbhz": 59.0,
+          "n_looks": 53,
+          "true_mean": 906.566037735849,
+          "true_percentile": 934.8,
+          "d_prime": 5.148594100532249,
+          "tolerance_fraction": 0.456891495601173,
+          "resolution_fraction": 0.043108504398827005,
+          "resolution_sigma": 3.900116347812033
+        }
+      ]
+    }
+  ]
+}
