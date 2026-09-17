@@ -25,7 +25,7 @@
     ],
     "code_phase_tolerance": 1,
     "doppler_bins": 1.0,
-    "seconds": 1146.5568478549994,
+    "seconds": 2397.1333071589997,
     "set": "A (calibration skies); nothing here is measured on set B",
     "not_calibrated": {
       "differential": "killed at phase 1 by rule (i): d' of 1.15 in the 45 dB-Hz bin is below half the baseline's 6.25"
@@ -63,6 +63,22 @@
       "n_wrong_fix": 0,
       "pd": 0.6255006675567423,
       "pd_in_band": 0.2727272727272727,
+      "n_satellites": 1498,
+      "n_band_satellites": 275
+    },
+    "thermometer": {
+      "family": "thermometer",
+      "n_records": 140,
+      "target_pfa": 0.01,
+      "hd_threshold": 2264,
+      "min_votes": 6,
+      "peak_ratio": null,
+      "pfa": 0.007142857142857143,
+      "pfa_upper": 0.033435030439217535,
+      "pfa_per_prn": 0.0006706908115358819,
+      "n_wrong_fix": 0,
+      "pd": 0.6789052069425902,
+      "pd_in_band": 0.49818181818181817,
       "n_satellites": 1498,
       "n_band_satellites": 275
     }
