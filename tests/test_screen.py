@@ -220,18 +220,36 @@ def test_a_stronger_satellite_sits_closer_to_its_row():
     assert loud.true_distance.mean() < quiet.true_distance.mean()
 
 
-def test_the_floor_with_a_satellite_present_is_not_the_noise_floor():
-    # A strong satellite cross correlates with the other PRNs' codes, so the
-    # population a threshold has to exclude is not the one noise alone gives.
+def test_the_floor_is_the_rotation_minimum_and_not_the_satellites():
+    # The floor sits below chance because distance_table keeps the best of four
+    # query rotations, and a minimum over four draws is below their mean. It is
+    # not cross correlation: a record holding no satellite at all gives the same
+    # floor as one holding a strong one.
     config = make_config()
     classifier = OneBitHdCamClassifier(config)
-    separation = screen(
+    loud = screen(
         classifier,
         [a_scenario(config, cn0_dbhz=60.0, seed=s) for s in range(3)],
         progress=False,
         noise_draws=64,
     )
-    assert separation.wrong_mean != separation.noise_mean
+    empty = screen(
+        classifier,
+        [generate_synthetic(config, [], seed=s) for s in range(3)],
+        progress=False,
+        noise_draws=64,
+    )
+    assert loud.wrong_mean == pytest.approx(empty.wrong_mean, rel=0.01)
+    assert loud.wrong_mean < 0.98 * (N_COLUMNS / 2)
+
+
+def test_the_noise_column_measures_one_variant_and_so_lands_at_chance():
+    # chance_floor takes every variant separately where distance_table takes
+    # their minimum, so the two columns are not comparable and their difference
+    # is the rotation minimum.
+    classifier = OneBitHdCamClassifier(make_config())
+    mean, _ = classifier.chance_floor(n_draws=128)
+    assert mean == pytest.approx(N_COLUMNS / 2, rel=0.01)
 
 
 # --------------------------------------------------------------------------

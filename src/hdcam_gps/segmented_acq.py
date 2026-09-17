@@ -4,8 +4,10 @@ The baseline asks a CAM to compare 2046 bits at once. The JSSC 2025 macro
 compares 64, and match line design is what limits that: every bit of a row
 discharges the same wire, so a wider word means a smaller signal per bit and a
 longer settle. Cutting a code period into K sub-rows of segment_bits each puts
-the comparison back inside that limit at no cost in stored bits - 1344 rows of
-2046 become 20160 of 128, the same 2.75 Mbit.
+the comparison back inside that limit at almost no cost in stored bits - 1344
+rows of 2046 become 20160 of 128, 2.58 Mbit against 2.75. The 6 % it does save is
+not a saving: it is the tail of the code period that no sub-row covers, and the
+paragraph on K below explains it.
 
 **The non-obvious part is that the searches do not follow the rows.** Segment k
 of a hypothesis at code phase p is segment 0 of the same hypothesis at code

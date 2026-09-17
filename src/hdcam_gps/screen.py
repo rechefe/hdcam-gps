@@ -13,11 +13,22 @@ screens every family:
   that stands for it, kept per look so the single look distribution exists. The
   tolerance has to be at least this, or the right row never fires.
 * D_wrong, the distance to every row of a PRN the record does not contain, at
-  every start. The tolerance has to be below this, or everything fires. Its mean
-  and standard deviation are the chance floor measured **with satellites
-  present**, which is the floor that matters: a strong satellite cross
-  correlates with the other PRNs' codes by a fixed amount that a pure noise
-  measurement never sees.
+  every start. The tolerance has to be below this, or everything fires.
+
+**D_wrong does not sit at n_columns / 2, and the reason is not cross correlation.**
+For the baseline it is 997.5 +- 13.6 against a chance of 1023, and the same 997.5
++- 13.6 comes back on records holding no satellites at all - measured, agreeing
+to 0.02 bits. The 25.6 bit offset is the minimum over the four query rotations
+that distance_table takes: one rotation alone gives 1023.0 +- 22.7, exactly
+chance, and the best of four gives 997.4 +- 13.7. A minimum over four draws sits
+below their mean and scatters less, and that is the whole effect. Cross
+correlation from the satellites present is somewhere inside the remaining 0.02
+bits, which is to say it does not measurably move this floor.
+
+That matters for reading the tables: noise_mean below is chance_floor, which
+measures one variant at a time and therefore lands at n_columns / 2, so it is not
+comparable with wrong_mean and the gap between the two columns is the rotation
+minimum rather than anything about satellites.
 
 From them, per C/N0 bin: d' = (mean D_wrong - mean D_true) / sd D_wrong, and the
 required tolerance fraction T = the 90th percentile of single look D_true over
@@ -25,7 +36,7 @@ n_columns. A family whose T is above 50 % cannot work at all; one between 12.5 %
 and 50 % works only on a CAM nobody has built.
 
 Running this costs one distance sweep per record, read in slices so the
-segmented family's 21504 rows never sit in memory at once.
+segmented family's 20160 rows never sit in memory at once.
 """
 
 from dataclasses import dataclass, field
@@ -73,10 +84,10 @@ class Separation:
     n_records: int
     true_distance: np.ndarray = field(repr=False)  # One per (record, satellite, look)
     true_cn0_dbhz: np.ndarray = field(repr=False)  # The satellite's C/N0, matching
-    wrong_mean: float  # Chance floor with satellites present
+    wrong_mean: float  # Floor of the best-of-variants distance, see the module
     wrong_sd: float
     n_wrong: int  # Distances it was measured over
-    noise_mean: float  # Chance floor on noise alone, for reference
+    noise_mean: float  # chance_floor, one variant at a time, so not comparable
     noise_sd: float
 
     def bin_edges(self, width: float = DEFAULT_BIN_WIDTH_DB) -> np.ndarray:

@@ -513,7 +513,7 @@ class CamAcqClassifier(GpsL1AcqClassifier):
     ) -> Iterator[tuple[int, np.ndarray]]:
         """The distance table a slice of queries at a time.
 
-        The whole table is 875 MB for the segmented family's 21504 rows, which
+        The whole table is 820 MB for the segmented family's 20160 rows, which
         is why anything that only needs summary statistics reads it in slices
         rather than calling distance_table.
 
