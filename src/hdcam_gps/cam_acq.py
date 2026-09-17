@@ -261,14 +261,34 @@ class CamAcqClassifier(GpsL1AcqClassifier):
             "phase gets."
         )
         self.min_votes = min_votes
-        if hd_threshold is None:
-            per_look = per_look_false_alarm(
-                self.n_looks, self.min_votes, self.n_cells, false_alarm_rate
-            )
-            hd_threshold = hd_threshold_for_false_alarm(self.n_columns, per_look)
         self._signed: np.ndarray | None = None
-        self.cam = cam_factory(self.n_rows, self.n_columns, hd_threshold)
+        # The codebook is written before the threshold is chosen, because a
+        # family whose chance floor has to be measured cannot measure it first.
+        self.cam = cam_factory(self.n_rows, self.n_columns, 0)
         self.cam.write_array(self.build_codebook())
+        if hd_threshold is None:
+            hd_threshold = self.default_hd_threshold(false_alarm_rate)
+        self.cam.set_hd_threshold(hd_threshold)
+
+    def default_hd_threshold(self, false_alarm_rate: float) -> int:
+        """The per look threshold a false alarm budget implies.
+
+        The vote rule sets how loose one look may be, and the chance floor turns
+        that rate into a distance. This is the 1 bit answer, where an unrelated
+        row's bits agree at chance and the floor is binomial with p = 0.5. A
+        family whose bits are not independent - the thermometer one - overrides
+        it and measures the floor instead.
+
+        Args:
+            false_alarm_rate (float): False detections tolerated per acquisition.
+
+        Returns:
+            int: The Hamming distance threshold, within [0, n_columns).
+        """
+        per_look = per_look_false_alarm(
+            self.n_looks, self.min_votes, self.n_cells, false_alarm_rate
+        )
+        return hd_threshold_for_false_alarm(self.n_columns, per_look)
 
     # ----------------------------------------------------------------------
     # the hooks a family overrides

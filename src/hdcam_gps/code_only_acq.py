@@ -136,7 +136,7 @@ class CodeOnlyHdCamClassifier(CamAcqClassifier):
         self.n_codebook_phases = n_codebook_phases
         self.n_columns = 2 * config.samples_per_code
         self._ramps = self._build_ramps(config)
-        self._window_cache: tuple[int, int, np.ndarray] | None = None
+        self._window_cache: tuple[np.ndarray, int, np.ndarray] | None = None
         super().__init__(
             config,
             hd_threshold=hd_threshold,
@@ -262,10 +262,11 @@ class CodeOnlyHdCamClassifier(CamAcqClassifier):
             np.ndarray: The quantized window, n_columns bits wide.
         """
         cached = self._window_cache
-        if cached is not None and cached[0] == id(samples) and cached[1] == start:
+        if cached is not None and cached[0] is samples and cached[1] == start:
             return cached[2]
         bits = quantize_iq(self.query_window(samples, start))
-        self._window_cache = (id(samples), start, bits)
+        # The record itself, not its id: a freed array's id gets reused.
+        self._window_cache = (samples, start, bits)
         return bits
 
     def wipe_doppler(
