@@ -307,9 +307,46 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         """
         raise NotImplementedError("A family has to build its queries.")
 
+    def true_rows(self, prn: int, doppler_hz: float) -> np.ndarray:
+        """The rows that stand for one satellite's own hypothesis.
+
+        The screen of docs/CAM_FAMILY_STUDY.md section 4.6 measures the distance
+        to the right answer, and only a family knows which of its rows that is.
+        The default is every row of that PRN sitting on the nearest Doppler bin,
+        which covers the stored phases of the baseline and, when the query
+        carries the Doppler, the whole PRN. A family whose rows are not on the
+        Doppler grid at all - the differential one - overrides this.
+
+        Args:
+            prn (int): The PRN of the satellite.
+            doppler_hz (float): Its true Doppler in Hz, not necessarily on the
+                search grid.
+
+        Returns:
+            np.ndarray: The row indices of that hypothesis.
+        """
+        rows = self.rows()
+        of_prn = rows.prn == prn
+        if self.doppler_is_in_the_query:
+            return np.flatnonzero(of_prn)
+        nearest = self.nearest_doppler_bin(doppler_hz)
+        return np.flatnonzero(of_prn & (rows.doppler_bin == nearest))
+
     # ----------------------------------------------------------------------
     # geometry, derived from the two indices
     # ----------------------------------------------------------------------
+
+    def nearest_doppler_bin(self, doppler_hz: float) -> int:
+        """The bin of the search grid a true Doppler falls closest to.
+
+        Args:
+            doppler_hz (float): A Doppler in Hz.
+
+        Returns:
+            int: An index into the configuration's Doppler grid.
+        """
+        grid = self.config.doppler_grid_hz
+        return int(np.argmin(np.abs(grid - doppler_hz)))
 
     def rows(self) -> RowIndex:
         """The row index, built once and kept.
@@ -438,6 +475,45 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         # Every dot product is an even integer below 2**24, so this is exact.
         return ((self.n_columns - dots) * 0.5).astype(np.int32)
 
+    def distance_batches(
+        self, samples: np.ndarray, batch: int | None = None
+    ) -> Iterator[tuple[int, np.ndarray]]:
+        """The distance table a slice of queries at a time.
+
+        The whole table is 875 MB for the segmented family's 21504 rows, which
+        is why anything that only needs summary statistics reads it in slices
+        rather than calling distance_table.
+
+        Args:
+            samples (np.ndarray): Input samples, samples_per_acquisition long.
+            batch (int | None): Queries per slice. None sizes it from the row
+                width, so one GEMM stays near 32 MB.
+
+        Yields:
+            tuple[int, np.ndarray]: The first query of the slice, and its
+                distances of shape (n_slice, n_rows).
+        """
+        n_queries = len(self.queries(len(samples)).start)
+        n_variants = max(1, len(self.query_variants(samples, 0)))
+        if batch is None:
+            # Both the query matrix going in and the distances coming out have
+            # to fit; the segmented family is wide in rows and narrow in bits,
+            # so the second bound is the binding one there.
+            batch = min(
+                GEMM_BATCH_BYTES // (4 * self.n_columns * n_variants),
+                GEMM_BATCH_BYTES // (4 * self.n_rows),
+            )
+            batch = max(1, batch)
+        for low in range(0, n_queries, batch):
+            high = min(low + batch, n_queries)
+            variants = [
+                self.query_variants(samples, query) for query in range(low, high)
+            ]
+            counts = np.array([len(group) for group in variants])
+            flat = np.array([bits for group in variants for bits in group])
+            first = np.concatenate(([0], np.cumsum(counts)[:-1]))
+            yield low, np.minimum.reduceat(self._distances(flat), first, axis=0)
+
     def distance_table(self, samples: np.ndarray) -> np.ndarray:
         """Every Hamming distance the first pass would ever compare against.
 
@@ -452,15 +528,8 @@ class CamAcqClassifier(GpsL1AcqClassifier):
         """
         n_queries = len(self.queries(len(samples)).start)
         table = np.empty((n_queries, self.n_rows), dtype=np.int32)
-        n_variants = max(1, len(self.query_variants(samples, 0)))
-        batch = max(1, GEMM_BATCH_BYTES // (4 * self.n_columns * n_variants))
-        for low in range(0, n_queries, batch):
-            high = min(low + batch, n_queries)
-            variants = [self.query_variants(samples, query) for query in range(low, high)]
-            counts = np.array([len(group) for group in variants])
-            flat = np.array([bits for group in variants for bits in group])
-            first = np.concatenate(([0], np.cumsum(counts)[:-1]))
-            table[low:high] = np.minimum.reduceat(self._distances(flat), first, axis=0)
+        for low, block in self.distance_batches(samples):
+            table[low : low + len(block)] = block
         return table
 
     def matched_table(self, samples: np.ndarray) -> np.ndarray:
