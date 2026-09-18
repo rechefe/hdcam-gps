@@ -415,7 +415,7 @@ record-average scaling only as the sampling design. No simulator patch.
 | 0 **(done)** | `cam_acq.py`, `hdcam_packed.py`, `cam_cost.py`, `sim_cache.py`, `scenarios.py`; per-satellite C/N0 in `scenario_from_record` (§4.2); refactor `hdcam_acq.py` onto the base; generalise `calibrate`; `evaluate(..., scenarios=)`; edit CLAUDE.md | `test_cam_acq.py`, `test_cam_cost.py`, `test_hdcam_packed.py`, `test_scenarios.py`, `test_sim_cache.py`, C/N0-estimator test in `test_signal_gen.py` |
 | 1 **(done)** | **cheap screen** — §4.6 `d'(C/N0)` and `T(x)` per family on set A, from distance tables only. Run by `scripts/run_family_screen.py` into `docs/screen_results.json`. | `notebooks/family_screen.ipynb`, `test_screen.py` |
 | 2 **(done)** | full classifiers for survivors, in order: code-only, thermometer, segmented, differential; the m-of-K rule generalised into the shared vote; `refine.py`, the second stage both Doppler-blind families need | `test_code_only_acq.py`, `test_thermometer_acq.py`, `test_segmented_acq.py`, `test_diff_acq.py`, `test_refine.py` |
-| 3 | §4.5 calibration on set A for every survivor **and the FFT reference**, backgrounded; freeze the settings in a checked-in JSON | — |
+| 3 **(done)** | §4.5 calibration on set A for every survivor **and the FFT reference**, backgrounded; frozen into `docs/calibration.json` by `scripts/run_family_calibration.py` (4.1 h, 140 records) | `FrozenSetting`, `decide_grid` and `RefinedCamCalibrator` tests |
 | 4 | `src/hdcam_gps/compare.py` — `compare(classifiers, scenarios, target_pfa) -> Comparison` running §4.3, §4.4 and §4.7 on set B and joining them into one table | `notebooks/family_comparison.ipynb` |
 | 5 | README family table replaces the two-classifier table; PROPOSAL step 4 gets the measured numbers | — |
 
@@ -451,6 +451,62 @@ Per §8 it still ships its screen plot and this paragraph.
 New test files follow `test_hdcam_acq.py` conventions exactly: module docstring saying what
 is and is not covered, local `make_config`, banner comments, `fs_hz=204.6e3`, long
 sentence-style names.
+
+### The phase 3 verdict
+
+20 calibration skies at seven record scalings, **140 records**, 275 satellites inside the
+38–42 dB-Hz band. Every family is at a matched false alarm rate, and the FFT reference goes
+through the identical protocol and the identical §4.1 scorer:
+
+| family | setting | P_fa,acq | 95% | pooled P_d | **P_d in 38–42 dB-Hz** | wrong fixes |
+|---|---|---|---|---|---|---|
+| FFT reference | ratio 2.00 | 0.0071 | 0.0334 | 0.829 | **0.985** | 0 |
+| thermometer | thr 2264/6138, votes 6 | 0.0071 | 0.0334 | 0.679 | **0.498** | 0 |
+| baseline | thr 944/2046, votes 4 | 0.0071 | 0.0334 | 0.626 | **0.273** | 0 |
+| code-only (quadrant) | thr 944/2046, votes 4 | 0.0000 | 0.0212 | 0.587 | **0.164** | 0 |
+| segmented | thr 50/128, votes 3 | 0.0000 | 0.0212 | 0.295 | **0.000** | 0 |
+| differential | — | — | — | — | — | not calibrated, dead at phase 1 |
+
+**Kill rule (ii) kills every CAM family, the baseline included.** The rule asks for a
+setting reaching `P_d >= 0.9` at 40 dB-Hz while holding the rate; the best any family
+manages is the thermometer's 0.498, and the reference reaches 0.985 on the same records
+through the same scorer. That control matters: it rules out the events vocabulary, the
+±1 sample code phase tolerance and the one bin Doppler tolerance as explanations. What is
+being measured is the classifiers.
+
+Rule (ii) was written to kill *new families relative to the baseline*, and it has instead
+killed the reference design of the study. That is a result about the operating point, not
+about any one threshold: §4.5 fixed 40 dB-Hz and `P_d >= 0.9` before the runs, phase 1
+measured `d'` of 2.4 to 3.5 in the 38–42 dB-Hz bins against the 6.25 its verdict table was
+read at, and a 1 bit CAM deciding on 9 looks of 10 ms does not separate at that `d'`. It is
+not a tuning failure: no setting of the 32 in §4.5's grid comes close, for any family.
+
+**Four things the tables say that the summary row does not.**
+
+- **The false alarm column is bimodal.** A setting either false alarms on essentially every
+  record or on essentially none, with almost nothing between. Baseline: `thr 955, votes 3`
+  is 1.0000 and `thr 944, votes 4` is 0.0071. Segmented: 53 is 1.0000 and 50 is 0.0000 —
+  **three bits of 128**. This is the narrow usable band of §4.6 arriving as a decision rule
+  cliff rather than as a distance statistic, and it is the first confirmation of that band
+  from outside the screen.
+- **Phase 1's ranking does not survive, and phase 1 said which number would transfer.** The
+  segmented family was second best on required tolerance (38.3% against the baseline's
+  45.7%) with the plan warning that the figure was a lower bound, because its `D_true` is a
+  minimum over 360 distances against the baseline's 24. It is last here, at zero. The
+  number that transferred was `d'`, not the tolerance fraction.
+- **Code-only lands on the baseline's exact setting.** Both have 1 374 912 cells and the
+  same measured floor of 997.5 ± 13.6 on 2046 bits, so they share a grid, and both pick
+  `thr 944, votes 4`. Its 0.164 against the baseline's 0.273 is the 1.2 dB the quadrant
+  mixer costs, as phase 1 measured it.
+- **No family reported a single wrong fix.** Including the segmented one, which is what
+  `RefinedCamCalibrator` exists to make true — without the second stage in the loop every
+  one of its detections would have been a miss and a false alarm at once.
+
+**What this does not establish.** Set B has not been touched, so these are calibration
+numbers and phase 4 is still the comparison. The records are 10 ms; a longer dwell buys
+`d'` and is the obvious thing phase 5 should say. And `P_d` here is pooled over the band
+rather than fitted, so "sensitivity in dB" is a phase 4 quantity, not one to read off this
+table.
 
 ---
 
