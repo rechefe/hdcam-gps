@@ -477,8 +477,9 @@ being measured is the classifiers.
 Rule (ii) was written to kill *new families relative to the baseline*, and it has instead
 killed the reference design of the study. That is a result about the operating point, not
 about any one threshold: §4.5 fixed 40 dB-Hz and `P_d >= 0.9` before the runs, phase 1
-measured `d'` of 2.4 to 3.5 in the 38–42 dB-Hz bins against the 6.25 its verdict table was
-read at, and a 1 bit CAM deciding on 9 looks of 10 ms does not separate at that `d'`. It is
+measured `d'` of 3.01 and 3.48 in the two bins inside 38–42 dB-Hz, against the 6.25 its
+verdict table was read at, and a 1 bit CAM deciding on 9 looks of 10 ms does not separate
+at that `d'`. It is
 not a tuning failure: no setting of the 32 in §4.5's grid comes close, for any family.
 
 **Four things the tables say that the summary row does not.**
