@@ -120,6 +120,9 @@ canvas { display: block; width: 100%; max-width: 100%; }
 .q button.right { border-color: var(--match); background: color-mix(in srgb, var(--match) 14%, var(--surface)); }
 .q button.wrong { border-color: var(--hit); background: color-mix(in srgb, var(--hit) 12%, var(--surface)); }
 .q .why { font-size: 14.5px; color: var(--ink-2); margin-top: 6px; }
+.eq { overflow-x: auto; margin: 14px 0; font-size: 17px; }
+mjx-container[display="true"] { margin: 10px 0 !important; overflow-x: auto; overflow-y: hidden; }
+mjx-container svg { max-width: 100%; }
 .ask { font-size: 14px; color: var(--muted); font-style: italic; }
 /* Code map */
 details.mod { border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); margin: 8px 0; }
@@ -172,7 +175,7 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 <p>The FFT receiver makes code phase parallel and loops over PRN and Doppler. The CAM receiver swaps the axes. That swap is the whole proposal.</p>
 
 <h3>The bet</h3>
-<p>The CAM is not an algorithmic win. Each search is an exhaustive 1-bit time-domain correlation against every row, so it performs about <span class="mono">N / log₂N ≈ 190×</span> more bit operations than an FFT search at 2046 bits per row. The bet is that an in-memory compare at sub-fJ per bit, with no data movement, beats a digital FFT ASIC by more than that factor.</p>
+<p>The CAM is not an algorithmic win. Each search is an exhaustive 1-bit time-domain correlation against every row, so it performs about \(N/\log_2 N \approx 190\times\) more bit operations than an FFT search at 2046 bits per row. The bet is that an in-memory compare at sub-fJ per bit, with no data movement, beats a digital FFT ASIC by more than that factor.</p>
 <p><code>PROPOSAL.md</code> puts one 10 ms acquisition at 36 832 searches over 2.75 Mbit: about <strong>19 µJ</strong> and <strong>295 µs</strong> at 8 ns per search. That number is encouraging, and it counts for nothing unless the signal can be detected at all at the tolerance silicon can provide.</p>
 
 <div class="callout warn">
@@ -191,7 +194,7 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 </tbody></table></div>
 <p>The <strong>CAM family study</strong> (<code>docs/CAM_FAMILY_STUDY.md</code>) runs step 1 and the measurable half of step 2 for five arrangements of the CAM. It fixed three <strong>kill rules</strong> before any run:</p>
 <ol>
-<li>Phase-1 <span class="mono">d′</span> in the 45 dB-Hz bin is below 1.0, or below half the baseline's.</li>
+<li>Phase-1 d′ in the 45 dB-Hz bin is below 1.0, or below half the baseline's.</li>
 <li>No (threshold, votes) setting on set A reaches P<sub>d</sub> ≥ 0.9 in the 40 dB-Hz bin at the target false-alarm rate.</li>
 <li>Set-B sensitivity is more than 3 dB worse than the baseline with no cost win to pay for it.</li>
 </ol>
@@ -203,8 +206,8 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 <h2><span class="chap">Chapter 2</span>Acquisition from first principles</h2>
 <p>Each GPS satellite spreads its signal with its own 1023-chip <strong>C/A code</strong>, a Gold code built from two 10-stage shift registers (G1 and G2). The code repeats every 1 ms at 1.023 Mchip/s. The study samples at <strong>1.023 MHz</strong>, one sample per chip, so one code period is <strong>1023 complex samples</strong>. A 10 ms record holds 10 230 samples.</p>
 <p>The received signal for one satellite is the code, delayed by the code phase, multiplied by a carrier at the Doppler frequency, buried in noise:</p>
-<pre><code>r[n] = a · c[(n − τ) mod 1023] · exp(j(2π f_d n / f_s + θ)) + w[n]      w ~ CN(0, 1)</code></pre>
-<p>The study fixes noise at unit power, so <span class="mono">N₀ = 1/f_s</span> and the amplitude is <span class="mono">a = √(C/N₀ / f_s)</span>. At 40 dB-Hz that is a per-sample SNR of <strong>−20.1 dB</strong>. The signal is invisible sample by sample. Correlating 1023 samples gains 30 dB, and that is what makes it visible.</p>
+<div class="eq">\[ r[n] = a\, c\big[(n-\tau) \bmod 1023\big]\, e^{\,j\left(2\pi f_d n / f_s + \theta\right)} + w[n], \qquad w[n] \sim \mathcal{CN}(0, 1) \]</div>
+<p>The study fixes noise at unit power, so \(N_0 = 1/f_s\) and the amplitude is \(a = \sqrt{(C/N_0)/f_s}\). At 40 dB-Hz that is a per-sample SNR of <strong>−20.1 dB</strong>. The signal is invisible sample by sample. Correlating 1023 samples gains 30 dB, and that is what makes it visible.</p>
 <p>Acquisition tests every hypothesis (PRN, Doppler bin, code phase). For each one it wipes off the carrier, multiplies by the replica code, and sums. The right hypothesis produces a peak. The figure below runs that search on a synthetic satellite with the real Gold codes.</p>
 
 <figure class="fig wide" id="fig1">
@@ -216,9 +219,9 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
     <div class="ctrl"><label for="f1-nc">Code periods summed <output id="f1-nc-o"></output></label><input type="range" id="f1-nc" min="1" max="10" step="1" value="1"></div>
     <button id="f1-redraw" type="button">New noise</button>
   </div>
-  <canvas id="f1-c" height="260" aria-label="Correlation power against code phase"></canvas>
+  <canvas id="f1-c" height="170" aria-label="Correlation power against code phase"></canvas>
   <div class="readout" id="f1-r"></div>
-  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as <span class="mono">|sinc(Δf·T)|</span> with T = 1 ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The FFT reference declares a satellite when the peak is at least 2.0 times the second peak.</figcaption>
+  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as \(\lvert\operatorname{sinc}(\Delta f\, T)\rvert\) with \(T = 1\) ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The FFT reference declares a satellite when the peak is at least 2.0 times the second peak.</figcaption>
 </figure>
 
 <p>The search space at the study's configuration is 32 PRNs × 21 Doppler bins (−5 000 to +5 000 Hz in 500 Hz steps) × 1023 code phases: <strong>687 456 cells</strong>. Every acquisition method is a strategy for visiting those cells.</p>
@@ -228,14 +231,14 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 <section id="onebit">
 <h2><span class="chap">Chapter 3</span>One bit per sample, and Hamming distance</h2>
 <p>A CAM compares bits. So both the stored replica and the received query are quantised to <strong>one bit per component</strong>: the sign of I and the sign of Q. <code>quantize_iq</code> stores the 1023 I-signs followed by the 1023 Q-signs, so a code period becomes a <strong>2046-bit word</strong>.</p>
-<p>On ±1 values, correlation and Hamming distance are the same measurement. For an <span class="mono">n</span>-bit word with signs <span class="mono">s</span> and <span class="mono">b</span>:</p>
-<pre><code>hd(s, b) = (n − s·b) / 2</code></pre>
-<p>A perfect match has distance 0. An unrelated word has distance near <span class="mono">n/2</span> = 1023. The code uses this identity to compute every distance as a single matrix multiply (<code>distance_table</code>), and a test asserts it equals bit-by-bit counting.</p>
+<p>On ±1 values, correlation and Hamming distance are the same measurement. For an \(n\)-bit word with signs \(\mathbf{s}, \mathbf{b} \in \{\pm 1\}^n\):</p>
+<div class="eq">\[ \operatorname{hd}(\mathbf{s}, \mathbf{b}) = \frac{n - \mathbf{s}\cdot\mathbf{b}}{2} \]</div>
+<p>A perfect match has distance 0. An unrelated word has distance near \(n/2 = 1023\). The code uses this identity to compute every distance as a single matrix multiply (<code>distance_table</code>), and a test asserts it equals bit-by-bit counting.</p>
 
 <h3>Carrier phase is the catch</h3>
 <p>Correlation takes a magnitude, so it ignores the carrier phase θ. Hamming distance cannot: a replica received in antiphase sits at distance 2046, the far end of the scale. The 1-bit classifier covers the circle with <strong>8 phase hypotheses</strong>:</p>
 <ul>
-<li><strong>4 query rotations.</strong> Multiplying by <span class="mono">j</span> maps (I, Q) to (−Q, I). On sign bits that is a swap of the two planes with one plane complemented, so a 1-bit front end can rotate a query by quarter turns with no arithmetic.</li>
+<li><strong>4 query rotations.</strong> Multiplying by \(j\) maps \((I, Q)\) to \((-Q, I)\). On sign bits that is a swap of the two planes with one plane complemented, so a 1-bit front end can rotate a query by quarter turns with no arithmetic.</li>
 <li><strong>2 stored phases per row,</strong> at 22.5° and 67.5°. The codebook is built offline at full precision, so it can be quantised at any starting phase. Mid-quadrant phases keep every row off the axes; a row at exactly 0° would have an all-zero Q plane that matches anything.</li>
 </ul>
 <p>The true hypothesis takes the minimum over the 8 combinations. That minimum is <code>D_true</code> in the study's vocabulary.</p>
@@ -317,11 +320,11 @@ for prn: report the survivor with the smallest d</code></pre>
 <ol>
 <li><strong>Hit.</strong> A row matches a query when its distance is at most <code>hd_threshold</code>. A <strong>hypothesis</strong> is one row, so the two stored phases of a (PRN, Doppler) pair are voted on separately. Only the segmented family groups rows: its 16 sub-rows of one code period form one hypothesis.</li>
 <li><strong>Look votes.</strong> A look votes for a cell (hypothesis, code phase) when at least <code>min_segments</code> of that hypothesis's rows matched in it, under any rotation. For every family except segmented, <code>min_segments = 1</code>.</li>
-<li><strong>Shortlist.</strong> A cell survives when at least <code>min_votes</code> looks voted. The code's default is <span class="mono">ceil(9/3) = 3</span>; calibration picked 4 for the baseline.</li>
+<li><strong>Shortlist.</strong> A cell survives when at least <code>min_votes</code> looks voted. The code's default is \(\lceil 9/3 \rceil = 3\); calibration picked 4 for the baseline.</li>
 <li><strong>Rank.</strong> Each survivor gets the smallest distance any of its queries reached. On hardware that distance comes from <code>tightest_match</code>, which bisects the CAM threshold; in simulation it comes from the distance table.</li>
 <li><strong>Report.</strong> For each PRN with a survivor, report the closest cell: its Doppler bin and code phase. There is no peak-to-second-peak test on the CAM side.</li>
 </ol>
-<p>Two data paths feed this rule. <code>search_mode="cam"</code> issues one search per query, as hardware would. <code>search_mode="table"</code> computes every distance at once with a GEMM, through <span class="mono">hd = (n − s·b)/2</span>. A test asserts both return the same results. The table path is the only affordable way to replay a grid of thresholds over hundreds of records.</p>
+<p>Two data paths feed this rule. <code>search_mode="cam"</code> issues one search per query, as hardware would. <code>search_mode="table"</code> computes every distance at once with a GEMM, through \(\operatorname{hd} = (n - \mathbf{s}\cdot\mathbf{b})/2\). A test asserts both return the same results. The table path is the only affordable way to replay a grid of thresholds over hundreds of records.</p>
 
 <div class="callout"><p><strong>Why votes matter, and why they bite.</strong> A single look cannot separate the true row from chance (Figure 2). Votes add independent looks, like non-coherent integration. But a vote is a 1-bit decision per look, so it throws away the distance information that a correlator would sum. With only 9 looks in 10 ms, the vote has very little to work with. Chapter 7 shows the consequence.</p></div>
 
@@ -370,9 +373,9 @@ for prn: report the survivor with the smallest d</code></pre>
 <p>The catch, found in phase 2: a 64-sample segment lasts 62.6 µs, so its frequency resolution is about 16 kHz. The whole ±5 kHz search fits inside one resolution cell, and every Doppler bin matches equally. The family is <strong>Doppler-blind</strong> and needs <code>refine.py</code>'s second stage. It is scored through the table path only, because at a 39% threshold on 128 bits a quarter of all rows hit every search.</p>
 
 <h3>Differential: <code>diff_acq.py</code>, <code>DifferentialHdCamClassifier</code></h3>
-<p>Rows and queries hold the delay-multiplied product <span class="mono">x[n]·x*[n−L]</span>. The carrier phase cancels, so there are no rotations and no stored phases: 32 PRNs × 4 Doppler classes = 128 rows, one search per start, 9 106 searches, 42× less energy. Two problems were predicted before any code was written, and both held:</p>
+<p>Rows and queries hold the delay-multiplied product \(x[n]\, x^*[n-L]\). The carrier phase cancels, so there are no rotations and no stored phases: 32 PRNs × 4 Doppler classes = 128 rows, one search per start, 9 106 searches, 42× less energy. Two problems were predicted before any code was written, and both held:</p>
 <ol>
-<li>Doppler becomes one constant phase <span class="mono">2π f_d L / f_s</span>, which one bit resolves into 4 classes. Resolving 500 Hz needs a long lag; staying unambiguous over ±5 kHz needs L ≤ 102. Both cannot hold, so the family is Doppler-blind.</li>
+<li>Doppler becomes one constant phase \(2\pi f_d L / f_s\), which one bit resolves into 4 classes. Resolving 500 Hz needs a long lag; staying unambiguous over ±5 kHz needs L ≤ 102. Both cannot hold, so the family is Doppler-blind.</li>
 <li>A delay-multiply detector goes as SNR² at low SNR. At −20 dB per sample, the noise × noise penalty is about 20 dB.</li>
 </ol>
 <div class="quiz" data-quiz="q5"></div>
@@ -391,7 +394,7 @@ for prn: report the survivor with the smallest d</code></pre>
 </ul>
 
 <h3>C/N₀ is measured per satellite</h3>
-<p>Path loss and the receiver antenna pattern spread one simulated sky over about <strong>8 dB</strong> (measured: 40.2 to 48.5 dB-Hz on one sky). So the record-average C/N₀ is only the sampling design. <code>measure_cn0_dbhz</code> correlates the clean record with each satellite's true replica over one code period and sets <span class="mono">C/N₀ = 10·log₁₀(a²·f_s)</span>. It searches ±1 sample around the labelled code phase, because the simulator's fractional phase rounds to a sample and one sample is one chip.</p>
+<p>Path loss and the receiver antenna pattern spread one simulated sky over about <strong>8 dB</strong> (measured: 40.2 to 48.5 dB-Hz on one sky). So the record-average C/N₀ is only the sampling design. <code>measure_cn0_dbhz</code> correlates the clean record with each satellite's true replica over one code period and sets \(C/N_0 = 10\log_{10}\!\left(a^2 f_s\right)\). It searches ±1 sample around the labelled code phase, because the simulator's fractional phase rounds to a sample and one sample is one chip.</p>
 
 <h3>One event vocabulary (§4.1, <code>evaluate.score_events</code>)</h3>
 <div class="tbl"><table>
@@ -419,15 +422,15 @@ for prn: report the survivor with the smallest d</code></pre>
 <li>Freeze it as a <code>FrozenSetting</code> in <code>docs/calibration.json</code>.</li>
 </ol>
 <p>The FFT reference goes through the same protocol over a <code>peak_ratio</code> grid. That matters: "everything at matched P<sub>fa</sub> or it is not a comparison".</p>
-<div class="callout"><p><strong>Correction applied in phase 3.</strong> The plan asked to gate on the 95% upper bound of P<sub>fa</sub>. With zero false alarms in <span class="mono">n</span> records that bound is 3/n regardless of the setting: 2.1e-2 on 140 records. No setting could pass, so the gate measured the length of the run, not the design. Phase 3 gates on the measured rate and prints the bound beside every pick.</p></div>
+<div class="callout"><p><strong>Correction applied in phase 3.</strong> The plan asked to gate on the 95% upper bound of P<sub>fa</sub>. With zero false alarms in \(n\) records that bound is \(3/n\) regardless of the setting: 2.1e-2 on 140 records. No setting could pass, so the gate measured the length of the run, not the design. Phase 3 gates on the measured rate and prints the bound beside every pick.</p></div>
 
 <h3>The separation screen (§4.6, phase 1)</h3>
 <p>Before building full classifiers, the screen measured each family's distances directly, with no decision rule. <code>screen.py</code> defines:</p>
 <ul>
 <li><strong>D<sub>true</sub></strong>: per present satellite and per look, the distance between the query at the true code phase and the true row (nearest Doppler bin, best stored phase, best rotation).</li>
 <li><strong>D<sub>wrong</sub></strong>: distances of every row of an absent PRN, at every start. Its mean is the measured chance floor: 997.5 ± 13.6 on 2046 bits, below 1023 because the floor is a minimum over four rotations.</li>
-<li><strong>d′</strong> = (mean D<sub>wrong</sub> − mean D<sub>true</sub>) / sd D<sub>wrong</sub>, per C/N₀ bin.</li>
-<li><strong>Required tolerance</strong> T = 90th percentile of single-look D<sub>true</sub> / word width: the threshold that would catch 90% of true looks.</li>
+<li><strong>d′</strong>, per C/N₀ bin: \[ d^\prime = \frac{\overline{D}_\text{wrong} - \overline{D}_\text{true}}{\sigma_{D_\text{wrong}}} \]</li>
+<li><strong>Required tolerance</strong>, the threshold that would catch 90% of true looks: \[ T = \frac{P_{90}\!\left(D_\text{true}\right)}{\text{word width}} \]</li>
 </ul>
 <div class="quiz" data-quiz="q6"></div>
 </section>
@@ -731,6 +734,10 @@ flowchart LR
 </main>
 </div>
 
+<script>
+window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] }, svg: { fontCache: "global" }, options: { enableMenu: false } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg-full.js" async></script>
 <script>
 "use strict";
 /* ---------- shared helpers ---------- */
