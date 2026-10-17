@@ -211,17 +211,19 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 <p>Acquisition tests every hypothesis (PRN, Doppler bin, code phase). For each one it wipes off the carrier, multiplies by the replica code, and sums. The right hypothesis produces a peak. The figure below runs that search on a synthetic satellite with the real Gold codes.</p>
 
 <figure class="fig wide" id="fig1">
-  <div class="fig-h"><span class="tag">Figure 1</span>Correlation against one (PRN, Doppler) hypothesis, at every code phase</div>
+  <div class="fig-h"><span class="tag">Figure 1</span>The FFT reference's search grid for one PRN</div>
   <div class="ctrls">
     <div class="ctrl"><label for="f1-prn">Local replica PRN</label><select id="f1-prn"></select></div>
-    <div class="ctrl"><label for="f1-dop">Local Doppler <output id="f1-dop-o"></output></label><input type="range" id="f1-dop" min="-5000" max="5000" step="100" value="1600"></div>
-    <div class="ctrl"><label for="f1-cn0">C/N₀ <output id="f1-cn0-o"></output></label><input type="range" id="f1-cn0" min="30" max="55" step="1" value="44"></div>
+    <div class="ctrl"><label for="f1-cn0">C/N₀ <output id="f1-cn0-o"></output></label><input type="range" id="f1-cn0" min="30" max="45" step="1" value="42"></div>
     <div class="ctrl"><label for="f1-nc">Code periods summed <output id="f1-nc-o"></output></label><input type="range" id="f1-nc" min="1" max="10" step="1" value="1"></div>
+    <div class="ctrl"><label for="f1-dop">Doppler row shown below <output id="f1-dop-o"></output></label><input type="range" id="f1-dop" min="0" max="20" step="1" value="13"></div>
     <button id="f1-redraw" type="button">New noise</button>
   </div>
-  <canvas id="f1-c" height="170" aria-label="Correlation power against code phase"></canvas>
+  <div class="pl-h" style="font-family:var(--f-display);font-size:12.5px;color:var(--ink-2)">Power over 21 Doppler bins × 1023 code phases. Click a row to plot it.</div>
+  <canvas id="f1-h" height="190" aria-label="Doppler by code phase power grid" style="cursor:pointer"></canvas>
+  <canvas id="f1-c" height="190" aria-label="Power against code phase for the selected Doppler row"></canvas>
   <div class="readout" id="f1-r"></div>
-  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as \(\lvert\operatorname{sinc}(\Delta f\, T)\rvert\) with \(T = 1\) ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The vertical axis is fixed: power in dB above the mean noise power of the summed periods, from −10 to +30 dB. The FFT reference declares a satellite when the peak is at least 2.0 times (3 dB above) the second peak.</figcaption>
+  <figcaption>The record holds PRN 7 at code phase 400 with a Doppler of 1 600 Hz, between the 1 500 and 2 000 Hz bins. Power is divided by the mean noise power, so noise averages 1 at every setting and the axes never move. Summing more code periods keeps the noise mean at 1 and narrows its spread, so the peak stands out. The peak spreads over neighbouring Doppler rows by \(\operatorname{sinc}^2(\Delta f\,T)\) with \(T = 1\) ms: 97% at the 1 500 Hz row, 57% at 2 000 Hz, 26% at 1 000 Hz. Pick another PRN and the grid holds only noise. The dashed line is twice the row's second peak: the FFT reference reports the satellite when the peak clears it.</figcaption>
 </figure>
 
 <p>The search space at the study's configuration is 32 PRNs × 21 Doppler bins (−5 000 to +5 000 Hz in 500 Hz steps) × 1023 code phases: <strong>687 456 cells</strong>. Every acquisition method is a strategy for visiting those cells.</p>
@@ -799,57 +801,124 @@ function received(prn, tau, fd, theta, cn0, nCodes, seed, noise = true) {
   return { re, im };
 }
 
-/* ---------- Figure 1: correlation ---------- */
+/* ---------- Figure 1: the FFT search grid ---------- */
+const FFTN = 4096, FBITS = 12;
+const fftRev = new Uint16Array(FFTN), fftCos = new Float64Array(FFTN / 2), fftSin = new Float64Array(FFTN / 2);
+for (let i = 0; i < FFTN; i++) { let r = 0; for (let b = 0; b < FBITS; b++) r |= ((i >> b) & 1) << (FBITS - 1 - b); fftRev[i] = r; }
+for (let i = 0; i < FFTN / 2; i++) { fftCos[i] = Math.cos(2 * Math.PI * i / FFTN); fftSin[i] = Math.sin(2 * Math.PI * i / FFTN); }
+function fft(re, im, inverse) {
+  for (let i = 0; i < FFTN; i++) { const j = fftRev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+  for (let size = 2; size <= FFTN; size <<= 1) {
+    const half = size >> 1, step = FFTN / size;
+    for (let i = 0; i < FFTN; i += size) for (let k = 0; k < half; k++) {
+      const wr = fftCos[k * step], wi = inverse ? fftSin[k * step] : -fftSin[k * step], a = i + k, b = a + half;
+      const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
+      re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+    }
+  }
+  if (inverse) for (let i = 0; i < FFTN; i++) { re[i] /= FFTN; im[i] /= FFTN; }
+}
+const codeSpec = {};
+function codeSpectrum(prn) {
+  if (codeSpec[prn]) return codeSpec[prn];
+  const c = caCode(prn), re = new Float64Array(FFTN), im = new Float64Array(FFTN);
+  for (let j = 0; j < 2 * N; j++) re[j] = c[j % N];
+  fft(re, im, false); return (codeSpec[prn] = { re, im });
+}
+/* power[bin][period][code phase], each |correlation|^2 / N, so noise averages 1 */
+function searchGrid(rec, prn, nBins, nPeriods) {
+  const E = codeSpectrum(prn), out = new Float32Array(nBins * nPeriods * N);
+  const re = new Float64Array(FFTN), im = new Float64Array(FFTN);
+  for (let b = 0; b < nBins; b++) {
+    const f = -5000 + 500 * b;
+    for (let m = 0; m < nPeriods; m++) {
+      re.fill(0); im.fill(0);
+      for (let k = 0; k < N; k++) { const n = m * N + k, ph = -2 * Math.PI * f * n / FS, co = Math.cos(ph), si = Math.sin(ph);
+        re[k] = rec.re[n] * co - rec.im[n] * si; im[k] = rec.re[n] * si + rec.im[n] * co; }
+      fft(re, im, false);
+      for (let i = 0; i < FFTN; i++) { const xr = re[i], xi = im[i]; re[i] = xr * E.re[i] + xi * E.im[i]; im[i] = xr * E.im[i] - xi * E.re[i]; }
+      fft(re, im, true);
+      const base = (b * nPeriods + m) * N;
+      for (let s = 0; s < N; s++) out[base + (N - s) % N] = (re[s] * re[s] + im[s] * im[s]) / N;
+    }
+  }
+  return out;
+}
 (function fig1() {
+  const TRUE = { prn: 7, tau: 400, fd: 1600, th: 0.7 }, BINS = 21, PER = 10, YMAX = 35;
   const sel = $("#f1-prn");
   for (let p = 1; p <= 32; p++) sel.add(new Option("PRN " + p + (p === 7 ? " (present)" : ""), p));
   sel.value = 7;
-  const TRUE = { prn: 7, tau: 400, fd: 1600, th: 0.7 };
-  let seed = 11, power = null, info = {};
-  function compute() {
-    const prn = +sel.value, fd = +$("#f1-dop").value, cn0 = +$("#f1-cn0").value, nc = +$("#f1-nc").value;
-    $("#f1-dop-o").textContent = fd + " Hz"; $("#f1-cn0-o").textContent = cn0 + " dB-Hz"; $("#f1-nc-o").textContent = nc;
-    const { re, im } = received(TRUE.prn, TRUE.tau, TRUE.fd, TRUE.th, cn0, nc, seed);
-    const c = caCode(prn); power = new Float64Array(N);
-    const zr = new Float64Array(N), zi = new Float64Array(N);
-    for (let m = 0; m < nc; m++) {
-      for (let k = 0; k < N; k++) { const n = m * N + k, ph = -2 * Math.PI * fd * n / FS, co = Math.cos(ph), si = Math.sin(ph);
-        zr[k] = re[n] * co - im[n] * si; zi[k] = re[n] * si + im[n] * co; }
-      for (let t = 0; t < N; t++) { let sr = 0, si2 = 0;
-        for (let k = 0; k < N; k++) { const ch = c[(k - t + N) % N]; if (ch > 0) { sr += zr[k]; si2 += zi[k]; } else { sr -= zr[k]; si2 -= zi[k]; } }
-        power[t] += sr * sr + si2 * si2; }
-    }
-    let pk = 0; for (let t = 1; t < N; t++) if (power[t] > power[pk]) pk = t;
-    let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && power[t] > sec) sec = power[t]; }
-    const df = fd - TRUE.fd, x = df * 1e-3, sinc = x === 0 ? 1 : Math.abs(Math.sin(Math.PI * x) / (Math.PI * x));
-    info = { pk, ratio: power[pk] / sec, prn, df, sinc, cn0, nc };
+  let seed = 11, grid = null, summed = null, key = "", pending = 0;
+  function recompute() {
+    const k = [sel.value, $("#f1-cn0").value, seed].join("|"); if (k === key) return; key = k;
+    const rec = received(TRUE.prn, TRUE.tau, TRUE.fd, TRUE.th, +$("#f1-cn0").value, PER, seed);
+    grid = searchGrid(rec, +sel.value, BINS, PER);
   }
+  function sum() {
+    const nc = +$("#f1-nc").value; summed = new Float32Array(BINS * N);
+    for (let b = 0; b < BINS; b++) for (let m = 0; m < nc; m++) { const base = (b * PER + m) * N; for (let t = 0; t < N; t++) summed[b * N + t] += grid[base + t] / nc; }
+  }
+  function ramp(v) { const a = hex(css("--code-bg")), b = hex(css("--s1")), c = hex(css("--ink"));
+    return v < 0.7 ? mix(a, b, v / 0.7) : mix(b, c, (v - 0.7) / 0.3); }
+  function hex(h) { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map(x => x + x).join(""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function mix(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * Math.max(0, Math.min(1, t)))); }
   function draw() {
-    const cv = $("#f1-c"), { g, w, h } = setupCanvas(cv);
-    const L = 44, R = 12, T = 12, B = 30, pw = w - L - R, ph = h - T - B;
-    const DB0 = -10, DB1 = 30, noise = N * info.nc;
-    const yOf = (v) => { const db = Math.min(DB1, Math.max(DB0, 10 * Math.log10(Math.max(v, 1e-12) / noise))); return T + ph - ph * (db - DB0) / (DB1 - DB0); };
+    if (!summed) return;
+    const row = +$("#f1-dop").value, nc = +$("#f1-nc").value, prn = +sel.value;
+    $("#f1-cn0-o").textContent = $("#f1-cn0").value + " dB-Hz"; $("#f1-nc-o").textContent = nc + (nc > 1 ? " ms" : " ms (coherent only)");
+    $("#f1-dop-o").textContent = (-5000 + 500 * row) + " Hz";
+    /* heatmap */
+    const hc = $("#f1-h"), H = setupCanvas(hc), L = 44, R = 12, T = 4, B = 4, pw = H.w - L - R, ph = H.h - T - B;
+    /* one image column per screen pixel, each the maximum of the code phases it covers, so a one-chip peak stays visible */
+    const cols = Math.max(1, Math.round(pw)), img = document.createElement("canvas"); img.width = cols; img.height = BINS;
+    const ig = img.getContext("2d"), id = ig.createImageData(cols, BINS), lut = [];
+    for (let i = 0; i <= 64; i++) lut.push(ramp(i / 64));
+    for (let b = 0; b < BINS; b++) for (let x = 0; x < cols; x++) {
+      const t0 = Math.floor(x * N / cols), t1 = Math.max(t0 + 1, Math.floor((x + 1) * N / cols)); let mx = 0;
+      for (let t = t0; t < t1; t++) mx = Math.max(mx, summed[b * N + t]);
+      const v = Math.pow(Math.min(1, Math.max(0, (mx - 1) / (YMAX * 0.6))), 0.75), c = lut[Math.round(v * 64)], o = ((BINS - 1 - b) * cols + x) * 4;
+      id.data[o] = c[0]; id.data[o + 1] = c[1]; id.data[o + 2] = c[2]; id.data[o + 3] = 255;
+    }
+    ig.putImageData(id, 0, 0); H.g.imageSmoothingEnabled = false; H.g.drawImage(img, L, T, pw, ph);
+    const rh = ph / BINS, ry = T + (BINS - 1 - row) * rh;
+    H.g.strokeStyle = css("--hit"); H.g.lineWidth = 1.5; H.g.strokeRect(L - 1, ry, pw + 2, rh);
+    font(H.g, 10.5); H.g.fillStyle = css("--muted"); H.g.textAlign = "right";
+    [[0, "−5 kHz"], [10, "0"], [20, "+5 kHz"]].forEach(([b, lab]) => H.g.fillText(lab, L - 5, T + (BINS - 1 - b) * rh + rh / 2 + 3));
+    hc._geom = { T, ph };
+    /* trace of the selected row */
+    const cv = $("#f1-c"), G = setupCanvas(cv), g = G.g, T2 = 10, B2 = 30, ph2 = G.h - T2 - B2;
+    const X = (t) => L + pw * t / (N - 1), Y = (v) => T2 + ph2 - ph2 * Math.min(v, YMAX) / YMAX;
     g.strokeStyle = css("--rule"); g.lineWidth = 1; g.fillStyle = css("--muted"); font(g, 10.5); g.textAlign = "right";
-    for (let db = DB0; db <= DB1; db += 10) { const y = T + ph - ph * (db - DB0) / (DB1 - DB0); g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.fillText((db > 0 ? "+" : "") + db, L - 5, y + 3); }
-    g.textAlign = "center";
-    for (let t = 0; t <= 1000; t += 200) { const x = L + pw * t / (N - 1); g.fillText(t, x, h - 12); }
-    g.fillText("code phase (samples = chips)", L + pw / 2, h - 1);
-    g.save(); g.translate(9, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("dB vs noise", 0, 0); g.restore();
-    const xt = L + pw * TRUE.tau / (N - 1);
-    g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(xt, T); g.lineTo(xt, T + ph); g.stroke(); g.setLineDash([]);
-    g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", xt + 4, T + 10);
-    g.strokeStyle = css("--s1"); g.lineWidth = 1.5; g.beginPath();
-    for (let t = 0; t < N; t++) { const x = L + pw * t / (N - 1), y = yOf(power[t]); t ? g.lineTo(x, y) : g.moveTo(x, y); }
-    g.stroke();
-    const det = info.ratio >= 2, right = info.prn === TRUE.prn && Math.abs(info.pk - TRUE.tau) <= 1;
-    $("#f1-r").innerHTML = `<span>peak at <b>${info.pk}</b></span><span>peak / second peak <b>${info.ratio.toFixed(2)}</b></span>` +
-      `<span>Doppler error <b>${info.df} Hz</b>, coherent amplitude <b>${(info.sinc * 100).toFixed(0)}%</b></span>` +
-      `<span>${det ? (right ? '<span class="pill ok">detected, right cell</span>' : '<span class="pill no">false alarm</span>') : '<span class="pill no">below ratio 2.0</span>'}</span>`;
+    for (let v = 0; v <= YMAX; v += 10) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(G.w - R, Y(v)); g.stroke(); g.fillText(v, L - 5, Y(v) + 3); }
+    g.textAlign = "center"; for (let t = 0; t <= 1000; t += 200) g.fillText(t, X(t), G.h - 14);
+    g.fillText("code phase (samples = chips)", L + pw / 2, G.h - 1);
+    g.save(); g.translate(9, T2 + ph2 / 2); g.rotate(-Math.PI / 2); g.fillText("power ÷ noise", 0, 0); g.restore();
+    const r0 = row * N; let pk = 0; for (let t = 1; t < N; t++) if (summed[r0 + t] > summed[r0 + pk]) pk = t;
+    let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && summed[r0 + t] > sec) sec = summed[r0 + t]; }
+    g.strokeStyle = css("--s1"); g.lineWidth = 1.25; g.beginPath();
+    for (let t = 0; t < N; t++) { const x = X(t), y = Y(summed[r0 + t]); t ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+    g.setLineDash([5, 4]); g.strokeStyle = css("--ink-2"); g.beginPath(); g.moveTo(L, Y(2 * sec)); g.lineTo(G.w - R, Y(2 * sec)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = css("--ink-2"); g.textAlign = "right"; g.fillText("2 × second peak", G.w - R - 2, Y(2 * sec) - 4);
+    if (prn === TRUE.prn) { g.setLineDash([2, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(X(TRUE.tau), T2); g.lineTo(X(TRUE.tau), T2 + ph2); g.stroke(); g.setLineDash([]);
+      g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", X(TRUE.tau) + 4, T2 + 10); }
+    /* the reference's own decision, over the whole grid */
+    let gb = 0, gt = 0; for (let b = 0; b < BINS; b++) for (let t = 0; t < N; t++) if (summed[b * N + t] > summed[gb * N + gt]) { gb = b; gt = t; }
+    let gs = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - gt), N - Math.abs(t - gt)); if (d > 1 && summed[gb * N + t] > gs) gs = summed[gb * N + t]; }
+    const ratio = summed[gb * N + gt] / gs, det = ratio >= 2, right = prn === TRUE.prn && Math.abs(gt - TRUE.tau) <= 1 && Math.abs(-5000 + 500 * gb - TRUE.fd) <= 500;
+    const df = -5000 + 500 * row - TRUE.fd, x = df * 1e-3, s2 = x === 0 ? 1 : (Math.sin(Math.PI * x) / (Math.PI * x)) ** 2;
+    $("#f1-r").innerHTML = `<span>this row: Doppler error <b>${df} Hz</b>, expected peak <b>${(1 + Math.pow(10, +$("#f1-cn0").value / 10) / FS * N * s2).toFixed(1)}</b> × noise</span>` +
+      `<span>grid maximum: <b>${-5000 + 500 * gb} Hz</b>, code phase <b>${gt}</b>, peak / second peak <b>${ratio.toFixed(2)}</b></span>` +
+      `<span>${det ? (right ? '<span class="pill ok">detected, right cell</span>' : '<span class="pill no">false alarm</span>') : '<span class="pill no">not reported: ratio below 2.0</span>'}</span>`;
   }
-  const go = () => { compute(); draw(); };
-  ["#f1-prn", "#f1-dop", "#f1-cn0", "#f1-nc"].forEach(id => $(id).addEventListener("input", go));
-  $("#f1-redraw").addEventListener("click", () => { seed++; go(); });
-  compute(); onRedraw(draw);
+  function schedule(full) { if (full) key += "*"; cancelAnimationFrame(pending); pending = requestAnimationFrame(() => { recompute(); sum(); draw(); }); }
+  ["#f1-prn", "#f1-cn0"].forEach(id => $(id).addEventListener("input", () => schedule(false)));
+  $("#f1-nc").addEventListener("input", () => { sum(); draw(); });
+  $("#f1-dop").addEventListener("input", draw);
+  $("#f1-redraw").addEventListener("click", () => { seed++; schedule(false); });
+  $("#f1-h").addEventListener("click", (e) => { const cv = $("#f1-h"), r = cv.getBoundingClientRect(), g = cv._geom; if (!g) return;
+    const b = 20 - Math.floor((e.clientY - r.top - g.T) / (g.ph / 21)); if (b >= 0 && b <= 20) { $("#f1-dop").value = b; draw(); } });
+  recompute(); sum(); onRedraw(draw);
 })();
 
 /* ---------- Figure 2: one query, one row ---------- */
