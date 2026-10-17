@@ -221,7 +221,7 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
   </div>
   <canvas id="f1-c" height="170" aria-label="Correlation power against code phase"></canvas>
   <div class="readout" id="f1-r"></div>
-  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as \(\lvert\operatorname{sinc}(\Delta f\, T)\rvert\) with \(T = 1\) ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The FFT reference declares a satellite when the peak is at least 2.0 times the second peak.</figcaption>
+  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as \(\lvert\operatorname{sinc}(\Delta f\, T)\rvert\) with \(T = 1\) ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The vertical axis is fixed: power in dB above the mean noise power of the summed periods, from −10 to +30 dB. The FFT reference declares a satellite when the peak is at least 2.0 times (3 dB above) the second peak.</figcaption>
 </figure>
 
 <p>The search space at the study's configuration is 32 PRNs × 21 Doppler bins (−5 000 to +5 000 Hz in 500 Hz steps) × 1023 code phases: <strong>687 456 cells</strong>. Every acquisition method is a strategy for visiting those cells.</p>
@@ -822,23 +822,24 @@ function received(prn, tau, fd, theta, cn0, nCodes, seed, noise = true) {
     let pk = 0; for (let t = 1; t < N; t++) if (power[t] > power[pk]) pk = t;
     let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && power[t] > sec) sec = power[t]; }
     const df = fd - TRUE.fd, x = df * 1e-3, sinc = x === 0 ? 1 : Math.abs(Math.sin(Math.PI * x) / (Math.PI * x));
-    info = { pk, ratio: power[pk] / sec, prn, df, sinc, cn0 };
+    info = { pk, ratio: power[pk] / sec, prn, df, sinc, cn0, nc };
   }
   function draw() {
     const cv = $("#f1-c"), { g, w, h } = setupCanvas(cv);
     const L = 44, R = 12, T = 12, B = 30, pw = w - L - R, ph = h - T - B;
-    let mx = 0; for (const v of power) mx = Math.max(mx, v);
-    g.strokeStyle = css("--rule"); g.lineWidth = 1; g.fillStyle = css("--muted"); font(g, 10.5);
-    for (let i = 0; i <= 4; i++) { const y = T + ph - ph * i / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); }
+    const DB0 = -10, DB1 = 30, noise = N * info.nc;
+    const yOf = (v) => { const db = Math.min(DB1, Math.max(DB0, 10 * Math.log10(Math.max(v, 1e-12) / noise))); return T + ph - ph * (db - DB0) / (DB1 - DB0); };
+    g.strokeStyle = css("--rule"); g.lineWidth = 1; g.fillStyle = css("--muted"); font(g, 10.5); g.textAlign = "right";
+    for (let db = DB0; db <= DB1; db += 10) { const y = T + ph - ph * (db - DB0) / (DB1 - DB0); g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.fillText((db > 0 ? "+" : "") + db, L - 5, y + 3); }
     g.textAlign = "center";
     for (let t = 0; t <= 1000; t += 200) { const x = L + pw * t / (N - 1); g.fillText(t, x, h - 12); }
     g.fillText("code phase (samples = chips)", L + pw / 2, h - 1);
-    g.save(); g.translate(11, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("power", 0, 0); g.restore();
+    g.save(); g.translate(9, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("dB vs noise", 0, 0); g.restore();
     const xt = L + pw * TRUE.tau / (N - 1);
     g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(xt, T); g.lineTo(xt, T + ph); g.stroke(); g.setLineDash([]);
     g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", xt + 4, T + 10);
     g.strokeStyle = css("--s1"); g.lineWidth = 1.5; g.beginPath();
-    for (let t = 0; t < N; t++) { const x = L + pw * t / (N - 1), y = T + ph - ph * power[t] / (mx || 1); t ? g.lineTo(x, y) : g.moveTo(x, y); }
+    for (let t = 0; t < N; t++) { const x = L + pw * t / (N - 1), y = yOf(power[t]); t ? g.lineTo(x, y) : g.moveTo(x, y); }
     g.stroke();
     const det = info.ratio >= 2, right = info.prn === TRUE.prn && Math.abs(info.pk - TRUE.tau) <= 1;
     $("#f1-r").innerHTML = `<span>peak at <b>${info.pk}</b></span><span>peak / second peak <b>${info.ratio.toFixed(2)}</b></span>` +
