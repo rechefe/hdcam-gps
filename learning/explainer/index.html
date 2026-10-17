@@ -1,0 +1,1200 @@
+<title>HD-CAM GPS Study</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky chapter rail on the left (wide screens), one reading column, figures break out wider. */
+:root {
+  --bg: #f7f8f9;
+  --surface: #ffffff;
+  --ink: #12161a;
+  --ink-2: #4a525a;
+  --muted: #7d858c;
+  --rule: #dde1e5;
+  --accent: #0d6d86;
+  --accent-soft: #e2f0f4;
+  --hit: #d14b3a;
+  --match: #1f8a5b;
+  --code-bg: #eef1f3;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  --f-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111416; --surface: #181c1f; --ink: #e9ecee; --ink-2: #b4bcc3; --muted: #838b92;
+    --rule: #2b3237; --accent: #4fb3cc; --accent-soft: #15303a; --hit: #ec6a5a; --match: #3cbf85;
+    --code-bg: #1f2529;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #2f9a2f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111416; --surface: #181c1f; --ink: #e9ecee; --ink-2: #b4bcc3; --muted: #838b92;
+  --rule: #2b3237; --accent: #4fb3cc; --accent-soft: #15303a; --hit: #ec6a5a; --match: #3cbf85;
+  --code-bg: #1f2529;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #2f9a2f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.6; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 48px; max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 96px; }
+@media (min-width: 1100px) { .wrap { grid-template-columns: 220px minmax(0, 1fr); } }
+nav.rail { display: none; }
+@media (min-width: 1100px) {
+  nav.rail { display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-family: var(--f-display); font-size: 13.5px; }
+}
+nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.rail a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--ink-2); text-decoration: none; }
+nav.rail a:hover, nav.rail a.on { background: var(--accent-soft); color: var(--ink); }
+nav.rail .num { display: inline-block; width: 1.6em; color: var(--muted); font-variant-numeric: tabular-nums; }
+main { min-width: 0; max-width: 820px; }
+header.top { padding-block: 8px 28px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+.eyebrow { font-family: var(--f-display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { font-family: var(--f-display); font-weight: 700; font-size: clamp(30px, 5vw, 44px); line-height: 1.08; margin: 8px 0 14px; text-wrap: balance; letter-spacing: -.01em; }
+h2 { font-family: var(--f-display); font-weight: 700; font-size: 28px; line-height: 1.2; margin: 72px 0 12px; text-wrap: balance; scroll-margin-top: 24px; }
+h2 .chap { display: block; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+h3 { font-family: var(--f-display); font-weight: 600; font-size: 19px; margin: 36px 0 8px; text-wrap: balance; scroll-margin-top: 24px; }
+h4 { font-family: var(--f-display); font-weight: 600; font-size: 16px; margin: 22px 0 6px; }
+p, li { max-width: 68ch; }
+.lede { font-size: 19px; color: var(--ink-2); }
+a { color: var(--accent); }
+code, .mono { font-family: var(--f-mono); font-size: .84em; }
+code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-family: var(--f-mono); font-size: 13px; line-height: 1.5; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.tbl { overflow-x: auto; margin: 16px 0; }
+table { border-collapse: collapse; font-size: 14.5px; min-width: 100%; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-family: var(--f-display); font-weight: 600; font-size: 13px; color: var(--ink-2); }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; }
+.callout.warn { border-color: var(--crit); background: color-mix(in srgb, var(--crit) 10%, var(--bg)); }
+.callout p { margin: 4px 0; }
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 22px 0 6px; }
+.stat { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.stat .k { font-family: var(--f-display); font-size: 12px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.stat .v { font-family: var(--f-display); font-size: 26px; font-weight: 700; margin-top: 2px; }
+.stat .d { font-size: 13.5px; color: var(--ink-2); line-height: 1.4; }
+/* Figures */
+figure.fig { margin: 28px 0; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 18px 18px 14px; min-width: 0; }
+@media (min-width: 1360px) { figure.fig.wide { margin-right: -160px; } }
+figure.fig .fig-h { font-family: var(--f-display); font-weight: 600; font-size: 15px; margin: 0 0 4px; }
+figure.fig .fig-h .tag { color: var(--accent); margin-right: 6px; }
+figure.fig figcaption { font-size: 14.5px; color: var(--ink-2); margin-top: 10px; line-height: 1.5; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; margin: 10px 0 12px; font-family: var(--f-display); font-size: 13px; }
+.ctrl { display: grid; gap: 3px; min-width: 0; }
+.ctrl label { color: var(--ink-2); }
+.ctrl output { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink); }
+.ctrl input[type=range] { width: 170px; accent-color: var(--accent); }
+select, button { font-family: var(--f-display); font-size: 13px; color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 5px 9px; }
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+canvas { display: block; width: 100%; max-width: 100%; }
+.readout { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--f-mono); font-size: 12.5px; color: var(--ink-2); margin-top: 8px; }
+.readout b { color: var(--ink); font-weight: 600; }
+.pill { display: inline-block; font-family: var(--f-display); font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.pill.ok { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--match); }
+.pill.no { background: color-mix(in srgb, var(--crit) 16%, transparent); color: var(--hit); }
+.pill.br-m { background: color-mix(in srgb, var(--s1) 16%, transparent); color: var(--ink); }
+.pill.br-x { background: color-mix(in srgb, var(--s2) 18%, transparent); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--f-display); font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.planes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.planes .pl-h { font-family: var(--f-display); font-size: 12.5px; color: var(--ink-2); margin-bottom: 4px; }
+.meter { position: relative; height: 46px; margin: 14px 0 4px; }
+/* Quiz */
+.quiz { margin: 30px 0 8px; border: 1px dashed var(--rule); border-radius: 12px; padding: 14px 18px; background: var(--surface); }
+.quiz h4 { margin: 0 0 6px; color: var(--accent); }
+.q { margin: 14px 0; }
+.q p { margin: 0 0 6px; font-weight: 600; }
+.q .opts { display: grid; gap: 6px; }
+.q button { text-align: left; font-family: var(--f-body); font-size: 15px; padding: 7px 10px; }
+.q button.right { border-color: var(--match); background: color-mix(in srgb, var(--match) 14%, var(--surface)); }
+.q button.wrong { border-color: var(--hit); background: color-mix(in srgb, var(--hit) 12%, var(--surface)); }
+.q .why { font-size: 14.5px; color: var(--ink-2); margin-top: 6px; }
+.ask { font-size: 14px; color: var(--muted); font-style: italic; }
+/* Code map */
+details.mod { border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); margin: 8px 0; }
+details.mod > summary { cursor: pointer; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; list-style: none; }
+details.mod > summary::-webkit-details-marker { display: none; }
+details.mod > summary .fn { font-family: var(--f-mono); font-weight: 600; font-size: 14px; }
+details.mod > summary .role { color: var(--ink-2); font-size: 14.5px; flex: 1 1 260px; min-width: 0; }
+details.mod[open] > summary { border-bottom: 1px solid var(--rule); }
+details.mod .body { padding: 6px 16px 14px; font-size: 15.5px; }
+details.mod .body h5 { font-family: var(--f-display); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 4px; }
+details.mod .body ul { padding-left: 20px; margin: 4px 0; }
+.layer { font-family: var(--f-display); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 26px 0 4px; }
+ol.refs { padding-left: 22px; font-size: 15px; }
+ol.refs li { margin: 8px 0; }
+.gl dt { font-family: var(--f-display); font-weight: 600; margin-top: 12px; }
+.gl dd { margin: 2px 0 0 0; max-width: 68ch; }
+footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--rule); padding-top: 16px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+<nav class="rail" aria-label="Chapters">
+  <ol id="toc"></ol>
+</nav>
+<main>
+
+<header class="top">
+  <div class="eyebrow">hdcam-gps · study handbook</div>
+  <h1>GPS acquisition as a CAM lookup</h1>
+  <p class="lede">A simulation study asks whether a Hamming-distance-tolerant content-addressable memory (HD-CAM) can replace the correlator in GPS L1 C/A acquisition. This handbook explains the question, the algorithm, the five CAM designs, the measurements, the code, and what comes next.</p>
+  <div class="status">
+    <div class="stat"><div class="k">Where the study is</div><div class="v">Phase 3 of 5</div><div class="d">Phases 0–3 done on <code>cam-algorithm-exploration</code>. Phase 4 (comparison on set B) not started.</div></div>
+    <div class="stat"><div class="k">Tolerance needed</div><div class="v">36–50%</div><div class="d">of the word width, against 12.5% shown in 65 nm silicon.</div></div>
+    <div class="stat"><div class="k">Best CAM P<sub>d</sub> at 40 dB-Hz</div><div class="v">0.498</div><div class="d">thermometer family, against 0.985 for the FFT reference at the same false-alarm rate.</div></div>
+    <div class="stat"><div class="k">Kill rule (ii)</div><div class="v" style="color:var(--hit)">All fail</div><div class="d">No CAM family reaches P<sub>d</sub> ≥ 0.9 at 40 dB-Hz, the baseline included.</div></div>
+  </div>
+</header>
+
+<section id="question">
+<h2><span class="chap">Chapter 1</span>The research question</h2>
+<p>A GPS receiver starts by <em>acquiring</em> satellites. It decides which of the 32 GPS satellites are in view, and for each one it estimates two numbers that tracking needs: the <strong>Doppler</strong> (carrier frequency offset, within ±5 kHz) and the <strong>code phase</strong> (where the 1023-chip spreading code starts inside the received samples).</p>
+<p>Every receiver does this with correlation. This study asks whether a different piece of hardware, a <strong>Hamming-distance-tolerant CAM</strong>, can do the same job as a memory lookup.</p>
+
+<h3>What an HD-CAM is</h3>
+<p>A content-addressable memory (CAM) stores words in rows. You present a <strong>query</strong> word, and every row compares itself against it in parallel, in one search cycle. An ordinary CAM reports exact matches. An <strong>HD-CAM</strong> reports every row whose Hamming distance to the query is at most a <strong>threshold</strong>. Each row's match line discharges in proportion to how many of its bits mismatch, and a sense amplifier compares the discharge against a tunable reference.</p>
+<p>The study's hardware reference is a 65 nm HD-CAM macro (Garzón et al., <em>IEEE JSSC</em>, 2025): 128 kbit, banks of 512 rows × 64 bits, 125 MHz, 0.19 fJ per bit per search, and a Hamming tolerance of 1 to 8 bits in a 64-bit word. The 8-of-64 figure, <strong>12.5% of the word</strong>, is the number this whole study is measured against.</p>
+
+<h3>The idea</h3>
+<p>Store every (PRN, Doppler) replica of the C/A code, quantised to 1 bit per I and Q sample, as one CAM row. Quantise one code period of the received signal the same way and present it as the query. One search then tests every PRN and every Doppler bin at once. Code phase becomes the serial loop: slide the query window one sample at a time.</p>
+<p>The FFT receiver makes code phase parallel and loops over PRN and Doppler. The CAM receiver swaps the axes. That swap is the whole proposal.</p>
+
+<h3>The bet</h3>
+<p>The CAM is not an algorithmic win. Each search is an exhaustive 1-bit time-domain correlation against every row, so it performs about <span class="mono">N / log₂N ≈ 190×</span> more bit operations than an FFT search at 2046 bits per row. The bet is that an in-memory compare at sub-fJ per bit, with no data movement, beats a digital FFT ASIC by more than that factor.</p>
+<p><code>PROPOSAL.md</code> puts one 10 ms acquisition at 36 832 searches over 2.75 Mbit: about <strong>19 µJ</strong> and <strong>295 µs</strong> at 8 ns per search. That number is encouraging, and it counts for nothing unless the signal can be detected at all at the tolerance silicon can provide.</p>
+
+<div class="callout warn">
+<p><strong>The decisive question (PROPOSAL risk 1).</strong> A 1-bit GPS sample at realistic signal levels disagrees with its own replica on almost half its bits, because the per-sample SNR is about −20 dB at 40 dB-Hz. So the threshold must sit near half the word. Silicon shows 12.5%. If the required fraction cannot be reached, the approach fails at every word width, because SNR sets the fraction, not the word length.</p>
+</div>
+
+<h3>Goals and stop conditions</h3>
+<p>The proposal sets measurable targets, each with a stop condition.</p>
+<div class="tbl"><table>
+<thead><tr><th>Step</th><th>Target</th><th>Stop if</th></tr></thead>
+<tbody>
+<tr><td>1. Statistical evidence</td><td>Full 32 PRN, ±5 kHz search; calibrated threshold and vote rule; matched-P<sub>fa</sub> comparison with the FFT reference. Within 1 dB of the 1-bit FFT reference.</td><td>Worse than the reference by more than 2 dB</td></tr>
+<tr><td>2. Tolerance feasibility</td><td>Reach a tolerance of about 45% of 2046 bits in silicon; sensitivity loss under 1 dB at the TT corner, under 2 dB across corners</td><td>Tolerance near half the word is not reachable</td></tr>
+<tr><td>3. Energy and area model</td><td>≥ 10× lower energy per acquisition at ≤ 2× area, against a 65 nm FFT ASIC</td><td>Below that, no tape-out</td></tr>
+<tr><td>4. Reduced-row designs</td><td>Fewer rows (Doppler in the query, fewer stored phases); real-sky data</td><td>Only after steps 1–3</td></tr>
+</tbody></table></div>
+<p>The <strong>CAM family study</strong> (<code>docs/CAM_FAMILY_STUDY.md</code>) runs step 1 and the measurable half of step 2 for five arrangements of the CAM. It fixed three <strong>kill rules</strong> before any run:</p>
+<ol>
+<li>Phase-1 <span class="mono">d′</span> in the 45 dB-Hz bin is below 1.0, or below half the baseline's.</li>
+<li>No (threshold, votes) setting on set A reaches P<sub>d</sub> ≥ 0.9 in the 40 dB-Hz bin at the target false-alarm rate.</li>
+<li>Set-B sensitivity is more than 3 dB worse than the baseline with no cost win to pay for it.</li>
+</ol>
+<p>Chapter 7 shows that rule (ii) kills every family, the baseline included.</p>
+<div class="quiz" data-quiz="q1"></div>
+</section>
+
+<section id="acq">
+<h2><span class="chap">Chapter 2</span>Acquisition from first principles</h2>
+<p>Each GPS satellite spreads its signal with its own 1023-chip <strong>C/A code</strong>, a Gold code built from two 10-stage shift registers (G1 and G2). The code repeats every 1 ms at 1.023 Mchip/s. The study samples at <strong>1.023 MHz</strong>, one sample per chip, so one code period is <strong>1023 complex samples</strong>. A 10 ms record holds 10 230 samples.</p>
+<p>The received signal for one satellite is the code, delayed by the code phase, multiplied by a carrier at the Doppler frequency, buried in noise:</p>
+<pre><code>r[n] = a · c[(n − τ) mod 1023] · exp(j(2π f_d n / f_s + θ)) + w[n]      w ~ CN(0, 1)</code></pre>
+<p>The study fixes noise at unit power, so <span class="mono">N₀ = 1/f_s</span> and the amplitude is <span class="mono">a = √(C/N₀ / f_s)</span>. At 40 dB-Hz that is a per-sample SNR of <strong>−20.1 dB</strong>. The signal is invisible sample by sample. Correlating 1023 samples gains 30 dB, and that is what makes it visible.</p>
+<p>Acquisition tests every hypothesis (PRN, Doppler bin, code phase). For each one it wipes off the carrier, multiplies by the replica code, and sums. The right hypothesis produces a peak. The figure below runs that search on a synthetic satellite with the real Gold codes.</p>
+
+<figure class="fig wide" id="fig1">
+  <div class="fig-h"><span class="tag">Figure 1</span>Correlation against one (PRN, Doppler) hypothesis, at every code phase</div>
+  <div class="ctrls">
+    <div class="ctrl"><label for="f1-prn">Local replica PRN</label><select id="f1-prn"></select></div>
+    <div class="ctrl"><label for="f1-dop">Local Doppler <output id="f1-dop-o"></output></label><input type="range" id="f1-dop" min="-5000" max="5000" step="100" value="1600"></div>
+    <div class="ctrl"><label for="f1-cn0">C/N₀ <output id="f1-cn0-o"></output></label><input type="range" id="f1-cn0" min="30" max="55" step="1" value="44"></div>
+    <div class="ctrl"><label for="f1-nc">Code periods summed <output id="f1-nc-o"></output></label><input type="range" id="f1-nc" min="1" max="10" step="1" value="1"></div>
+    <button id="f1-redraw" type="button">New noise</button>
+  </div>
+  <canvas id="f1-c" height="260" aria-label="Correlation power against code phase"></canvas>
+  <div class="readout" id="f1-r"></div>
+  <figcaption>The received record holds PRN 7 at code phase 400 and a Doppler of 1 600 Hz. Pick the wrong PRN and the peak vanishes: Gold codes cross-correlate at about −24 dB. Move the local Doppler away from 1 600 Hz and the peak shrinks as <span class="mono">|sinc(Δf·T)|</span> with T = 1 ms, reaching zero at 1 kHz of error. This is why the Doppler grid has 500 Hz steps. Summing code periods non-coherently lifts the peak out of the noise at low C/N₀. The FFT reference declares a satellite when the peak is at least 2.0 times the second peak.</figcaption>
+</figure>
+
+<p>The search space at the study's configuration is 32 PRNs × 21 Doppler bins (−5 000 to +5 000 Hz in 500 Hz steps) × 1023 code phases: <strong>687 456 cells</strong>. Every acquisition method is a strategy for visiting those cells.</p>
+<div class="quiz" data-quiz="q2"></div>
+</section>
+
+<section id="onebit">
+<h2><span class="chap">Chapter 3</span>One bit per sample, and Hamming distance</h2>
+<p>A CAM compares bits. So both the stored replica and the received query are quantised to <strong>one bit per component</strong>: the sign of I and the sign of Q. <code>quantize_iq</code> stores the 1023 I-signs followed by the 1023 Q-signs, so a code period becomes a <strong>2046-bit word</strong>.</p>
+<p>On ±1 values, correlation and Hamming distance are the same measurement. For an <span class="mono">n</span>-bit word with signs <span class="mono">s</span> and <span class="mono">b</span>:</p>
+<pre><code>hd(s, b) = (n − s·b) / 2</code></pre>
+<p>A perfect match has distance 0. An unrelated word has distance near <span class="mono">n/2</span> = 1023. The code uses this identity to compute every distance as a single matrix multiply (<code>distance_table</code>), and a test asserts it equals bit-by-bit counting.</p>
+
+<h3>Carrier phase is the catch</h3>
+<p>Correlation takes a magnitude, so it ignores the carrier phase θ. Hamming distance cannot: a replica received in antiphase sits at distance 2046, the far end of the scale. The 1-bit classifier covers the circle with <strong>8 phase hypotheses</strong>:</p>
+<ul>
+<li><strong>4 query rotations.</strong> Multiplying by <span class="mono">j</span> maps (I, Q) to (−Q, I). On sign bits that is a swap of the two planes with one plane complemented, so a 1-bit front end can rotate a query by quarter turns with no arithmetic.</li>
+<li><strong>2 stored phases per row,</strong> at 22.5° and 67.5°. The codebook is built offline at full precision, so it can be quantised at any starting phase. Mid-quadrant phases keep every row off the axes; a row at exactly 0° would have an all-zero Q plane that matches anything.</li>
+</ul>
+<p>The true hypothesis takes the minimum over the 8 combinations. That minimum is <code>D_true</code> in the study's vocabulary.</p>
+
+<figure class="fig wide" id="fig2">
+  <div class="fig-h"><span class="tag">Figure 2</span>One query against one row: 2046 bits, mismatches in red</div>
+  <div class="ctrls">
+    <div class="ctrl"><label for="f2-cn0">C/N₀ <output id="f2-cn0-o"></output></label><input type="range" id="f2-cn0" min="30" max="71" step="1" value="45"></div>
+    <div class="ctrl"><label for="f2-th">Received carrier phase <output id="f2-th-o"></output></label><input type="range" id="f2-th" min="0" max="359" step="1" value="40"></div>
+    <div class="ctrl"><label for="f2-df">Doppler residual in bin <output id="f2-df-o"></output></label><input type="range" id="f2-df" min="0" max="250" step="10" value="0"></div>
+    <div class="ctrl"><label>Query rotation</label><div class="seg" id="f2-rot"></div></div>
+    <div class="ctrl"><label>Stored phase</label><div class="seg" id="f2-ph"></div></div>
+    <div class="ctrl"><label>Row</label><div class="seg" id="f2-row"></div></div>
+    <button id="f2-redraw" type="button">New noise</button>
+  </div>
+  <div class="planes">
+    <div><div class="pl-h">I plane: bits 0–1022</div><canvas id="f2-ci" height="200" aria-label="I plane mismatches"></canvas></div>
+    <div><div class="pl-h">Q plane: bits 1023–2045</div><canvas id="f2-cq" height="200" aria-label="Q plane mismatches"></canvas></div>
+  </div>
+  <canvas id="f2-m" height="78" aria-label="Distance on the 0 to 2046 scale"></canvas>
+  <div class="readout" id="f2-r"></div>
+  <figcaption>Set C/N₀ to 71 (noiseless) and turn the carrier phase. The distance cycles through the quadrants, and the best of the 8 hypotheses never exceeds about a quarter of the word: that is the phase-quantisation floor. Now drop C/N₀ to 40 dB-Hz. Even the best hypothesis lands near 45% of the word, because noise flips almost half the signs. The marks on the scale show the 12.5% silicon tolerance, the baseline's calibrated threshold (944), and the chance floor. Switch the row to a wrong PRN to see what chance looks like.</figcaption>
+</figure>
+
+<p>This figure is PROPOSAL risk 1 in one picture. At useful signal levels the true row and a wrong row differ by a few tens of bits out of 2046, and both sit far above 12.5% of the word. A single look cannot separate them. The classifier needs many looks and a vote, and those cost sensitivity.</p>
+<p>Keeping only the sign costs about <strong>1.96 dB</strong> of SNR against full-precision correlation (the classic 2/π hard-limiting loss). Resolving carrier phase into 8 hypotheses costs roughly another 2.5 dB, according to <code>PROPOSAL.md</code>.</p>
+<div class="quiz" data-quiz="q3"></div>
+</section>
+
+<section id="algos">
+<h2><span class="chap">Chapter 4</span>Two algorithms, one search space</h2>
+<p>Both classifiers answer the same question with the same output: a list of <code>PrnResult(prn, doppler_hz, code_phase)</code>. They differ in which axis of the search space they make parallel.</p>
+
+<figure class="fig wide" id="fig3">
+  <div class="fig-h"><span class="tag">Figure 3</span>What one operation covers</div>
+  <div class="ctrls">
+    <div class="ctrl"><label>Classifier</label><div class="seg" id="f3-mode"></div></div>
+    <button id="f3-play" type="button">Play</button>
+    <button id="f3-step" type="button">Step</button>
+  </div>
+  <canvas id="f3-c" height="280" aria-label="Search grid coverage"></canvas>
+  <div class="readout" id="f3-r"></div>
+  <figcaption>Left: the 32 × 21 grid of (PRN, Doppler) hypotheses. Right: the 1023 code phases. One FFT operation (FFT, multiply by the conjugate code spectrum, inverse FFT) covers one (PRN, Doppler) cell at every code phase. One CAM search covers every (PRN, Doppler) row at one code phase and one carrier rotation. The counters show what a full 10 ms acquisition costs each way.</figcaption>
+</figure>
+
+<h3>The FFT reference (<code>fft_acq.py</code>)</h3>
+<p>The textbook parallel code-phase search (Van Nee &amp; Coenen, 1991). For each PRN and Doppler bin it wipes off the carrier, transforms each code period, multiplies by the conjugate spectrum of the replica, and inverse-transforms. That yields the circular correlation at all 1023 code phases at once. Power is summed non-coherently across the 10 code periods.</p>
+<pre><code>code_fft[prn] = conj(FFT(replica(prn)))                 # once per PRN, offline
+for prn in PRNs:                                        # serial
+    for f in doppler_grid:                              # serial
+        z      = samples · exp(−j2π f t)                # carrier wipe-off
+        corr   = IFFT(FFT(blocks(z)) · code_fft[prn])   # all code phases at once
+        grid[f, :] = Σ_blocks |corr|²                   # non-coherent sum
+    f*, τ* = argmax(grid)
+    if grid[f*, τ*] / second_peak(grid[f*, :]) ≥ peak_ratio:   # default 2.5; calibrated 2.0
+        report(prn, f*, τ*)</code></pre>
+<p>It uses full-precision complex arithmetic. In the study it is the <strong>reference</strong>: the control that every CAM family is compared against, run through the identical calibration protocol and scorer.</p>
+
+<h3>The 1-bit HD-CAM classifier (<code>hdcam_acq.py</code>, the baseline family)</h3>
+<p>The codebook holds one row per (PRN, Doppler bin, stored phase): 32 × 21 × 2 = <strong>1 344 rows</strong> of <strong>2 046 bits</strong>, 2.75 Mbit in total. The query is one code period of the record, quantised the same way.</p>
+<pre><code>for prn, f, φ in PRNs × doppler_grid × {22.5°, 67.5°}:      # offline
+    CAM[row] = quantize_iq(replica(prn) · exp(j(2π f t + φ)))   # 2046 bits
+
+for start in 0 .. 9207:                     # serial: code phase (and look)
+    q    = quantize_iq(samples[start : start + 1023])
+    τ    = start mod 1023;   look = start // 1023
+    for r in 0..3:                          # 4 quarter turns
+        for row in CAM.search(rotate(q, r)):    # every (PRN, Doppler) at once
+            hit[row, τ, look] = True
+
+votes[row, τ] = number of looks with a hit               # 9 looks per code phase
+survivors     = {(row, τ) : votes[row, τ] ≥ min_votes}
+for each survivor: d = tightest_match(...)  # bisect the CAM threshold, ~11 searches
+for prn: report the survivor with the smallest d</code></pre>
+<p>A 10 ms record gives 10 230 − 1023 + 1 = <strong>9 208 window starts</strong>. Each start is one code phase in one <strong>look</strong> (one code period). Every code phase gets at least 9 looks (<code>n_looks = n_codes − 1</code>). Times 4 rotations, that is <strong>36 832 searches</strong> per acquisition.</p>
+
+<h3>The decision rule, step by step</h3>
+<p>One rule serves all five CAM families. It lives once, in <code>CamAcqClassifier</code> (<code>cam_acq.py</code>).</p>
+<ol>
+<li><strong>Hit.</strong> A row matches a query when its distance is at most <code>hd_threshold</code>. A <strong>hypothesis</strong> is one row, so the two stored phases of a (PRN, Doppler) pair are voted on separately. Only the segmented family groups rows: its 16 sub-rows of one code period form one hypothesis.</li>
+<li><strong>Look votes.</strong> A look votes for a cell (hypothesis, code phase) when at least <code>min_segments</code> of that hypothesis's rows matched in it, under any rotation. For every family except segmented, <code>min_segments = 1</code>.</li>
+<li><strong>Shortlist.</strong> A cell survives when at least <code>min_votes</code> looks voted. The code's default is <span class="mono">ceil(9/3) = 3</span>; calibration picked 4 for the baseline.</li>
+<li><strong>Rank.</strong> Each survivor gets the smallest distance any of its queries reached. On hardware that distance comes from <code>tightest_match</code>, which bisects the CAM threshold; in simulation it comes from the distance table.</li>
+<li><strong>Report.</strong> For each PRN with a survivor, report the closest cell: its Doppler bin and code phase. There is no peak-to-second-peak test on the CAM side.</li>
+</ol>
+<p>Two data paths feed this rule. <code>search_mode="cam"</code> issues one search per query, as hardware would. <code>search_mode="table"</code> computes every distance at once with a GEMM, through <span class="mono">hd = (n − s·b)/2</span>. A test asserts both return the same results. The table path is the only affordable way to replay a grid of thresholds over hundreds of records.</p>
+
+<div class="callout"><p><strong>Why votes matter, and why they bite.</strong> A single look cannot separate the true row from chance (Figure 2). Votes add independent looks, like non-coherent integration. But a vote is a 1-bit decision per look, so it throws away the distance information that a correlator would sum. With only 9 looks in 10 ms, the vote has very little to work with. Chapter 7 shows the consequence.</p></div>
+
+<figure class="fig wide" id="fig4">
+  <div class="fig-h"><span class="tag">Figure 4</span>Threshold, votes and looks: a model of the decision</div>
+  <div class="ctrls">
+    <div class="ctrl"><label>Family</label><div class="seg" id="f4-fam"></div></div>
+    <div class="ctrl"><label for="f4-cn0">Satellite C/N₀ bin <output id="f4-cn0-o"></output></label><input type="range" id="f4-cn0" min="0" max="15" step="1" value="6"></div>
+    <div class="ctrl"><label for="f4-thr">Threshold <output id="f4-thr-o"></output></label><input type="range" id="f4-thr" min="880" max="1010" step="1" value="944"></div>
+    <div class="ctrl"><label for="f4-v">min_votes <output id="f4-v-o"></output></label><input type="range" id="f4-v" min="1" max="9" step="1" value="4"></div>
+    <div class="ctrl"><label for="f4-L">Looks <output id="f4-L-o"></output></label><input type="range" id="f4-L" min="9" max="49" step="1" value="9"></div>
+    <button id="f4-match" type="button">Match P<sub>fa</sub> = 1e-2</button>
+    <button id="f4-cal" type="button">Calibrated setting</button>
+  </div>
+  <canvas id="f4-c" height="250" aria-label="Distance distributions of the true row and wrong rows"></canvas>
+  <div class="readout" id="f4-r"></div>
+  <figcaption>Curves are Gaussians fitted to the phase-1 screen: the true row's per-look distance at the chosen C/N₀ (mean, with spread inferred from the 90th percentile) and the wrong rows' distance (measured mean and sd). A look of the true cell hits with probability <span class="mono">p_true</span>; a wrong cell with <span class="mono">p_wrong</span>. Votes are binomial over the looks, and a false alarm needs any of about 945 000 absent-PRN cells to survive. This is a teaching model, not the measurement: the measured false-alarm tail is heavier than Gaussian (at threshold 955 with 3 votes the model predicts 0.08, and the run measured 1.0), it overstates P<sub>d</sub> (about 0.50 at the calibrated setting near 41 dB-Hz, against 0.27 measured over the band), and overlapping windows are not independent. Use it to see the trade, and read Chapter 7 for the numbers. Raise the number of looks, then match P<sub>fa</sub> again: this is the longer-dwell lever named in <code>HANDOFF.md</code>.</figcaption>
+</figure>
+<div class="quiz" data-quiz="q4"></div>
+</section>
+
+<section id="families">
+<h2><span class="chap">Chapter 5</span>Five ways to arrange the CAM</h2>
+<p>The baseline is one arrangement of the CAM. The family study (<code>docs/CAM_FAMILY_STUDY.md</code>) asks whether a different arrangement needs less tolerance or less hardware. Each family changes what a row holds and what a query holds. All five run the same decision rule.</p>
+
+<figure class="fig wide" id="fig5">
+  <div class="fig-h"><span class="tag">Figure 5</span>What a row and a query hold, family by family</div>
+  <div class="ctrls"><div class="ctrl"><label>Family</label><div class="seg" id="f5-fam"></div></div></div>
+  <div id="f5-body"></div>
+  <figcaption>Bars show the bit layout of one row and one query to scale within each family. Costs are the closed-form first pass at 0.19 fJ/bit/search and 8 ns/search, without the ~11 bisection searches per survivor. The counted per-family costs (§4.7) are phase 4 work.</figcaption>
+</figure>
+
+<h3>Baseline: <code>hdcam_acq.py</code>, <code>OneBitHdCamClassifier</code></h3>
+<p>One row per (PRN, Doppler bin, stored phase): 1 344 rows × 2 046 bits. One query per start sample, in 4 rotations: 36 832 searches. Chapters 3 and 4 describe it.</p>
+
+<h3>Code-only rows: <code>code_only_acq.py</code>, <code>CodeOnlyHdCamClassifier</code></h3>
+<p>Rows hold the code with no carrier: 32 PRNs × 2 stored phases = <strong>64 rows</strong>, 21× less area. The query carries the Doppler instead. Each window is wiped at each of the 21 Doppler bins before searching, so searches rise 21× to 773 472, and energy stays the same: the same bit comparisons, rearranged.</p>
+<p>The headline mixer, <code>mixer="quadrant"</code>, keeps the front end 1-bit. It converts each sample's two sign bits to a 2-bit quadrant number and adds a 2-bit phase ramp mod 4, with no multiplier. Each sample takes up to 45° of rounding, which costs about 1.2 dB. <code>mixer="exact"</code> wipes with a full-precision NCO before quantising; it is not a 1-bit front end and is reported only as an upper bound.</p>
+
+<h3>Thermometer: <code>thermometer_acq.py</code>, <code>ThermometerHdCamClassifier</code></h3>
+<p>I and Q are quantised to 4 levels and written in unary: level L is L ones, then zeros, in 3 bits. Hamming distance between two unary words is the absolute difference of their levels, so the CAM computes an L1 distance. Rows are 3× wider: 1 344 × <strong>6 138 bits</strong>. Two-bit quantisation loses 0.55 dB against 1.96 dB for one bit.</p>
+<p>The quantiser needs a gain. It uses the RMS of the record itself (<code>component_scale</code>), never the simulator's noise level, which would be cheating. Because the bits inside a unary word are dependent, the chance floor is not n/2; the family measures it (about 39% of the word) and sets its threshold from the measurement.</p>
+
+<h3>Segmented: <code>segmented_acq.py</code>, <code>SegmentedHdCamClassifier</code></h3>
+<p>Each code-period row is cut into <strong>15 sub-rows of 128 bits</strong> (64 samples): 20 160 rows, the match-line width silicon has shown. The last 63 samples of each period are left out. One sliding 64-sample query visits every segment at every alignment: segment k at start s is segment 0 at start s − 64k, so searches stay near the baseline's (40 668). A look votes when at least <code>min_segments</code> = 5 of the 15 sub-rows match.</p>
+<p>The catch, found in phase 2: a 64-sample segment lasts 62.6 µs, so its frequency resolution is about 16 kHz. The whole ±5 kHz search fits inside one resolution cell, and every Doppler bin matches equally. The family is <strong>Doppler-blind</strong> and needs <code>refine.py</code>'s second stage. It is scored through the table path only, because at a 39% threshold on 128 bits a quarter of all rows hit every search.</p>
+
+<h3>Differential: <code>diff_acq.py</code>, <code>DifferentialHdCamClassifier</code></h3>
+<p>Rows and queries hold the delay-multiplied product <span class="mono">x[n]·x*[n−L]</span>. The carrier phase cancels, so there are no rotations and no stored phases: 32 PRNs × 4 Doppler classes = 128 rows, one search per start, 9 106 searches, 42× less energy. Two problems were predicted before any code was written, and both held:</p>
+<ol>
+<li>Doppler becomes one constant phase <span class="mono">2π f_d L / f_s</span>, which one bit resolves into 4 classes. Resolving 500 Hz needs a long lag; staying unambiguous over ±5 kHz needs L ≤ 102. Both cannot hold, so the family is Doppler-blind.</li>
+<li>A delay-multiply detector goes as SNR² at low SNR. At −20 dB per sample, the noise × noise penalty is about 20 dB.</li>
+</ol>
+<div class="quiz" data-quiz="q5"></div>
+</section>
+
+<section id="measure">
+<h2><span class="chap">Chapter 6</span>How the study measures</h2>
+<p>Every number comes from the same code path for every classifier, on the same records. These rules were fixed before the runs.</p>
+
+<h3>Records: gps-sdr-sim skies</h3>
+<p>Test signals come from <a href="https://github.com/osqzss/gps-sdr-sim">gps-sdr-sim</a>, a third-party simulator vendored as a git submodule. It produces a real constellation from a real broadcast ephemeris. A seven-line patch (<code>third_party/patches/0001-report-doppler-and-code-phase.patch</code>) makes it print each satellite's true Doppler and code phase, so every record is labelled with ground truth. The build copies the submodule, patches the copy, and compiles there; the submodule stays clean.</p>
+<ul>
+<li><strong>60 skies</strong> at 17-minute spacing: <strong>set A</strong> (20 skies, calibration) and <strong>set B</strong> (40 skies, evaluation). <code>ScenarioBank.split()</code> keeps them disjoint. Set B is untouched until phase 4.</li>
+<li>Each sky is rescaled to <strong>7 record-average C/N₀ values</strong>, 36 to 54 dB-Hz in 3 dB steps. A simulator record does not depend on C/N₀, so <code>sim_cache.py</code> runs the simulator once per sky.</li>
+<li>Every classifier sees <strong>the same samples array</strong> for a record. Five families scored on five independent draws would be five experiments, not one comparison.</li>
+</ul>
+
+<h3>C/N₀ is measured per satellite</h3>
+<p>Path loss and the receiver antenna pattern spread one simulated sky over about <strong>8 dB</strong> (measured: 40.2 to 48.5 dB-Hz on one sky). So the record-average C/N₀ is only the sampling design. <code>measure_cn0_dbhz</code> correlates the clean record with each satellite's true replica over one code period and sets <span class="mono">C/N₀ = 10·log₁₀(a²·f_s)</span>. It searches ±1 sample around the labelled code phase, because the simulator's fractional phase rounds to a sample and one sample is one chip.</p>
+
+<h3>One event vocabulary (§4.1, <code>evaluate.score_events</code>)</h3>
+<div class="tbl"><table>
+<thead><tr><th>Event</th><th>Definition</th></tr></thead>
+<tbody>
+<tr><td><strong>found</strong></td><td>PRN reported with |f<sub>rep</sub> − f<sub>true</sub>| ≤ 500 Hz (one bin) and wrapped |τ<sub>rep</sub> − τ<sub>true</sub>| ≤ 1 sample</td></tr>
+<tr><td><strong>wrong fix</strong></td><td>PRN reported, but Doppler or code phase outside tolerance. Counts as a miss <em>and</em> a false alarm.</td></tr>
+<tr><td><strong>miss</strong></td><td>Not found (includes a wrong fix)</td></tr>
+<tr><td><strong>false alarm</strong></td><td>A PRN reported that is not in the record</td></tr>
+</tbody></table></div>
+<ul>
+<li><strong>P<sub>d</sub></strong> = found / observations, pooled over (record, satellite) pairs and binned by per-satellite C/N₀ in 1 dB bins, with Clopper-Pearson intervals.</li>
+<li><strong>P<sub>fa,acq</sub></strong> = records with at least one false alarm / records. The target is <strong>1e-2</strong>. Demonstrating 1e-4 would need about 30 000 records (rule of three), so the study does not claim it.</li>
+<li><strong>Sensitivity</strong> = the lowest C/N₀ bin with P<sub>d</sub> ≥ 0.9, from at least 100 observations.</li>
+</ul>
+
+<h3>Two Doppler-blind families need a second stage</h3>
+<p>The segmented and differential families report a PRN and a code phase but cannot resolve Doppler (Chapter 5). Scored raw, every detection would be a wrong fix. <code>refine.RefinedClassifier</code> wraps them with <code>DopplerRefiner</code>, a 1-bit correlator that sweeps the 21 Doppler bins at the code phase the CAM named. It costs about 3 300× less than a full correlation search, and the study reports its cost separately because it is still a correlator.</p>
+
+<h3>Calibration protocol (§4.5, phase 3)</h3>
+<ol>
+<li>For each family, compute one distance table per set-A record (140 records).</li>
+<li>Replay a grid of (threshold, votes) settings through <code>decide_grid</code>, the same rule as <code>decide</code>, and score each with the events above.</li>
+<li>For each vote rule, take the loosest threshold whose <strong>measured</strong> P<sub>fa,acq</sub> clears 1e-2. Among those, pick the highest pooled P<sub>d</sub> in the 38–42 dB-Hz bins.</li>
+<li>Freeze it as a <code>FrozenSetting</code> in <code>docs/calibration.json</code>.</li>
+</ol>
+<p>The FFT reference goes through the same protocol over a <code>peak_ratio</code> grid. That matters: "everything at matched P<sub>fa</sub> or it is not a comparison".</p>
+<div class="callout"><p><strong>Correction applied in phase 3.</strong> The plan asked to gate on the 95% upper bound of P<sub>fa</sub>. With zero false alarms in <span class="mono">n</span> records that bound is 3/n regardless of the setting: 2.1e-2 on 140 records. No setting could pass, so the gate measured the length of the run, not the design. Phase 3 gates on the measured rate and prints the bound beside every pick.</p></div>
+
+<h3>The separation screen (§4.6, phase 1)</h3>
+<p>Before building full classifiers, the screen measured each family's distances directly, with no decision rule. <code>screen.py</code> defines:</p>
+<ul>
+<li><strong>D<sub>true</sub></strong>: per present satellite and per look, the distance between the query at the true code phase and the true row (nearest Doppler bin, best stored phase, best rotation).</li>
+<li><strong>D<sub>wrong</sub></strong>: distances of every row of an absent PRN, at every start. Its mean is the measured chance floor: 997.5 ± 13.6 on 2046 bits, below 1023 because the floor is a minimum over four rotations.</li>
+<li><strong>d′</strong> = (mean D<sub>wrong</sub> − mean D<sub>true</sub>) / sd D<sub>wrong</sub>, per C/N₀ bin.</li>
+<li><strong>Required tolerance</strong> T = 90th percentile of single-look D<sub>true</sub> / word width: the threshold that would catch 90% of true looks.</li>
+</ul>
+<div class="quiz" data-quiz="q6"></div>
+</section>
+
+<section id="results">
+<h2><span class="chap">Chapter 7</span>Results so far</h2>
+
+<h3>Phase 1: the tolerance every family needs</h3>
+<p>The screen ran on 60 set-A records (20 skies at 54, 45 and 36 dB-Hz). It answers PROPOSAL risk 1 directly.</p>
+
+<figure class="fig wide" id="fig6">
+  <div class="fig-h"><span class="tag">Figure 6</span>Required tolerance and separation against per-satellite C/N₀</div>
+  <div class="ctrls"><div class="ctrl"><label>Measure</label><div class="seg" id="f6-m"></div></div></div>
+  <canvas id="f6-c" height="320" aria-label="Required tolerance fraction by family against C/N0"></canvas>
+  <div class="legend" id="f6-leg"></div>
+  <div class="readout" id="f6-r">Hover the chart to read values.</div>
+  <figcaption>Tolerance: the 90th percentile of single-look D<sub>true</sub> divided by the word width, in 2 dB bins of per-satellite C/N₀. The shaded band is 0 to 12.5%, what the 65 nm silicon is reported to support. Every family sits between 36% and 50% at every C/N₀ that matters. d′: separation between true and wrong distances; the dashed line is d′ = 1 (kill rule (i)). Code-only (exact) appears only above 49 dB-Hz because it was screened on 12 records at the 54 dB-Hz scaling.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<thead><tr><th>Family</th><th>Rows × bits</th><th class="n">d′ at 45 dB-Hz</th><th class="n">vs baseline</th><th class="n">Tolerance at 45 dB-Hz</th><th>Phase 1 verdict</th></tr></thead>
+<tbody>
+<tr><td>baseline</td><td>1 344 × 2 046</td><td class="n">6.25</td><td class="n">1.00×</td><td class="n">45.7%</td><td>reference</td></tr>
+<tr><td>thermometer</td><td>1 344 × 6 138</td><td class="n">6.88</td><td class="n">1.10×</td><td class="n">36.1%</td><td>survives</td></tr>
+<tr><td>code-only (quadrant)</td><td>64 × 2 046</td><td class="n">5.47</td><td class="n">0.87×</td><td class="n">46.4%</td><td>survives</td></tr>
+<tr><td>segmented</td><td>20 160 × 128</td><td class="n">3.50</td><td class="n">0.56×</td><td class="n">38.3%*</td><td>survives, by 12%</td></tr>
+<tr><td>differential</td><td>128 × 2 046</td><td class="n">1.15</td><td class="n">0.18×</td><td class="n">49.7%</td><td><span class="pill no">dead, rule (i)</span></td></tr>
+</tbody></table></div>
+<p>* The segmented D<sub>true</sub> is a minimum over many more distances than the baseline's (360 against 24), so 38.3% is a lower bound.</p>
+<div class="callout"><p><strong>Answer to risk 1:</strong> 36% to 50% of the word, for every arrangement tried, against 12.5% reported for silicon. The factor of three to four does not close with C/N₀, word width, or arrangement. The thermometer needs the least and pays 3× the area. Its d′ beats the baseline, so the extra bits carry signal, not just noise.</p></div>
+
+<h3>Phase 3: detection at a matched false-alarm rate</h3>
+<p>Calibration ran on 140 set-A records (20 skies × 7 scalings): 1 498 satellite observations, 275 of them in the 38–42 dB-Hz band. Every classifier, the FFT reference included, went through the same protocol and the same scorer.</p>
+
+<figure class="fig wide" id="fig7">
+  <div class="fig-h"><span class="tag">Figure 7</span>P<sub>d</sub> at the calibrated setting, P<sub>fa,acq</sub> ≤ 1e-2</div>
+  <div class="ctrls"><div class="ctrl"><label>Show</label><div class="seg" id="f7-m"></div></div></div>
+  <div id="f7-body"></div>
+  <figcaption>The vertical line is kill rule (ii)'s target, P<sub>d</sub> ≥ 0.9 in the 40 dB-Hz band. The FFT reference clears it on the same records through the same scorer, which rules out the measurement as the cause. No family reported a wrong fix.</figcaption>
+</figure>
+
+<div class="tbl"><table>
+<thead><tr><th>Classifier</th><th>Setting</th><th class="n">Tolerance</th><th class="n">P<sub>fa,acq</sub></th><th class="n">95% bound</th><th class="n">Pooled P<sub>d</sub></th><th class="n">P<sub>d</sub> 38–42 dB-Hz</th></tr></thead>
+<tbody>
+<tr><td>FFT reference</td><td>ratio 2.00</td><td class="n">—</td><td class="n">0.0071</td><td class="n">0.0334</td><td class="n">0.829</td><td class="n"><b>0.985</b></td></tr>
+<tr><td>thermometer</td><td>thr 2264/6138, votes 6</td><td class="n">36.9%</td><td class="n">0.0071</td><td class="n">0.0334</td><td class="n">0.679</td><td class="n"><b>0.498</b></td></tr>
+<tr><td>baseline</td><td>thr 944/2046, votes 4</td><td class="n">46.1%</td><td class="n">0.0071</td><td class="n">0.0334</td><td class="n">0.626</td><td class="n"><b>0.273</b></td></tr>
+<tr><td>code-only (quadrant)</td><td>thr 944/2046, votes 4</td><td class="n">46.1%</td><td class="n">0.0000</td><td class="n">0.0212</td><td class="n">0.587</td><td class="n"><b>0.164</b></td></tr>
+<tr><td>segmented + refiner</td><td>thr 50/128, votes 3, 5 of 15 segments</td><td class="n">39.1%</td><td class="n">0.0000</td><td class="n">0.0212</td><td class="n">0.295</td><td class="n"><b>0.000</b></td></tr>
+<tr><td>differential</td><td colspan="6">not calibrated: dead at phase 1</td></tr>
+</tbody></table></div>
+
+<div class="callout warn"><p><strong>Kill rule (ii) kills every CAM family, the baseline included.</strong> The best, the thermometer, reaches 0.498 against the 0.9 target. The rule was fixed before the runs; <code>HANDOFF.md</code> warns against reinterpreting it now that it has killed the study's own reference design.</p></div>
+
+<h4>What the table does not show</h4>
+<ul>
+<li><strong>The false-alarm rate is bimodal.</strong> A setting false-alarms on nearly every record or on nearly none. Baseline: threshold 955 with 3 votes gives 1.0000; 944 with 4 votes gives 0.0071. Segmented: 53 gives 1.0000 and 50 gives 0.0000, three bits of 128. Figure 4's model shows the same cliff.</li>
+<li><strong>Phase 1's ranking did not survive.</strong> Segmented was second best on tolerance and is last on detection. The number that transferred from phase 1 was d′, not the tolerance fraction.</li>
+<li><strong>Code-only picked the baseline's exact setting.</strong> Both have 1 374 912 cells and the same chance floor, so they share a calibration grid. Its 0.164 against 0.273 is the cost of the quadrant mixer.</li>
+<li><strong>Why it fails at 40 dB-Hz.</strong> d′ is 3.01 and 3.48 in the two bins inside 38–42 dB-Hz, against 6.25 at 45 dB-Hz. Nine 1-bit looks do not separate at that d′. This is a result about the operating point: 10 ms of signal, decided by votes.</li>
+</ul>
+<p><strong>What this does not establish.</strong> Set B is untouched, so these are calibration numbers. P<sub>d</sub> is pooled over the band, not fitted, so sensitivity in dB is a phase 4 quantity. P<sub>fa</sub> ≤ 1e-4 is not demonstrated.</p>
+<div class="quiz" data-quiz="q7"></div>
+</section>
+
+<section id="related">
+<h2><span class="chap">Chapter 8</span>Baselines and related work</h2>
+<p>The study compares against one algorithmic reference that it runs, and several hardware and system baselines it cites. The literature below was re-checked for this handbook through search-index excerpts of publisher, arXiv and repository pages. Full texts could not be opened from this session, so each entry says what was confirmed.</p>
+
+<h3>Baselines the study names</h3>
+<div class="tbl"><table>
+<thead><tr><th>Baseline</th><th>Role</th><th>Status of the cited figure</th></tr></thead>
+<tbody>
+<tr><td><strong>FFT parallel code-phase search</strong> [3], same records, full-precision input, same 10 ms</td><td>Algorithmic reference, implemented in <code>fft_acq.py</code> and calibrated like every family</td><td>Running in the repo. P<sub>d</sub> 0.985 at 38–42 dB-Hz, P<sub>fa,acq</sub> 0.0071.</td></tr>
+<tr><td><strong>1-bit matched-filter / FFT acquisition ASIC</strong>, "1–3.5 mW/channel class, 65 nm"</td><td>Fair hardware comparison</td><td>Weak. 3.5 mW/channel is an acquisition-and-tracking channel estimate with no node stated [8]. No 65 nm acquisition ASIC with a published mW/channel was found. NAPA [10] is a real 65 nm chip with a 16k-point FFT acquisition engine, but has no published power figure.</td></tr>
+<tr><td><strong>SnapperGPS</strong> [6, 7]: snapshot receiver, cloud solve</td><td>System-level alternative: is acquisition energy the bottleneck at all?</td><td>Confirmed: 12 ms snapshots at 4 MHz, 1 bit per sample; 97% reliability, 11 m median error; over a year on a 40 mAh battery.</td></tr>
+<tr><td><strong>Commercial receiver</strong>, "u-blox class, ~67 mW / 50 channels"</td><td>Sanity bound</td><td>Number confirmed, meaning differs: 67 mW is the u-blox 6 <em>whole receiver</em> in continuous mode, not its acquisition engine [11].</td></tr>
+</tbody></table></div>
+
+<div class="callout warn"><p><strong>Verify before phase 5.</strong> The headline silicon numbers in <code>PROPOSAL.md</code> (512 × 64-bit banks, tolerance 1–8 bits = 12.5%, 0.19 fJ/bit/search, the energy breakdown, and the sensitivity spread) did not appear in any abstract-level source. The JSSC abstract confirms 65 nm, 125 MHz and about 0.2 fJ/bit/search [2]. Check the rest against the full text, because 12.5% is the number the whole study is measured against.</p></div>
+
+<h3>Prior art the study does not cite yet</h3>
+<p>No published work applies a CAM, a TCAM or an HD-CAM to GNSS or PN-code acquisition. In-memory and analog acquisition do exist, so the novelty claim is "Hamming-tolerant CAM lookup", not "in-memory acquisition" (PROPOSAL risk 7).</p>
+<ul>
+<li><strong>CCSA</strong> (ISSCC 2023, Shanghai Jiao Tong University) [12]: a mixed-signal GPS acquisition accelerator with charge-domain correlation. 28 nm, 64 × 64 PE array, 114–394 TOPS/W. This is the strongest silicon baseline found, and the closest analog-correlation prior art.</li>
+<li><strong>RRAM-crossbar GPS acquisition</strong> (Lin Wei et al., J. Guangdong Univ. of Technology) [13]: code correlation on RRAM crossbars, 0.94 mW, 27.2 TOPS/W. In-memory acquisition, though a crossbar MAC rather than a CAM.</li>
+<li><strong>Trimble memory-based search</strong> (US 6,091,785 and continuations, expired) [14]: store 1 ms of signal, hold replicas in memory, compare and threshold. The conceptual ancestor of "store replicas, present a query".</li>
+<li><strong>PiC-BNN</strong> (arXiv 2026) [5]: reuses the same 65 nm HD-CAM silicon as a statistical classifier for binary neural networks. The closest published use of HD tolerance as a detector.</li>
+</ul>
+
+<h3>The HD-CAM line of work</h3>
+<ul>
+<li><strong>Garzón et al., IEEE Access 2022</strong> [1]: the HD-CAM concept, simulation only (65 nm, Monte Carlo), sensing Hamming distance by match-line charge redistribution. The preprint claims tolerance of very large distances, about 60% of the pattern length. That is a simulation claim. <code>PROPOSAL.md</code> describes it as "a theoretical ceiling of about half the word width"; reword that.</li>
+<li><strong>Garzón et al., IEEE JSSC 2025</strong> [2]: the 128-kbit silicon. It senses distance by match-line <em>discharge speed</em>, a different mechanism from [1], with the threshold programmable through bias voltages. Attribute the Veval fragility argument to this paper, not to [1].</li>
+<li><strong>Approximate CAM review</strong> (Chips, 2023) [4], from the same group.</li>
+<li>Similarity search in memory more broadly: analog memristor CAMs [15], in-memory hyperdimensional computing [16], hyperdimensional associative memories [17], FeFET multi-bit CAMs [18]. A 7 nm study shows interconnect parasitics degrade wide match lines [19], which bears on PROPOSAL risk 2 (2046-bit rows).</li>
+</ul>
+
+<h3>References</h3>
+<ol class="refs">
+<li>E. Garzón et al., "Hamming Distance Tolerant Content-Addressable Memory (HD-CAM) for DNA Classification," <em>IEEE Access</em> 10:28080–28093, 2022. <a href="https://doi.org/10.1109/ACCESS.2022.3158305">doi:10.1109/ACCESS.2022.3158305</a>; preprint <a href="https://arxiv.org/abs/2111.09747">arXiv:2111.09747</a>.</li>
+<li>E. Garzón et al., "A 128-kbit Approximate Search-Capable Content-Addressable Memory (CAM) With Tunable Hamming Distance," <em>IEEE JSSC</em> 60(8):3009–3019, 2025. <a href="https://doi.org/10.1109/JSSC.2025.3529715">doi:10.1109/JSSC.2025.3529715</a>.</li>
+<li>D. J. R. van Nee, A. J. R. M. Coenen, "New fast GPS code-acquisition technique using FFT," <em>Electronics Letters</em> 27(2):158–160, 1991.</li>
+<li>E. Garzón, L. Yavits, A. Teman, M. Lanuzza, "Approximate Content-Addressable Memories: A Review," <em>Chips</em> 2(2):70–82, 2023. <a href="https://doi.org/10.3390/chips2020005">doi:10.3390/chips2020005</a>.</li>
+<li>Y. Harary et al., "PiC-BNN: A 128-kbit 65 nm Processing-in-CAM-Based End-to-End Binary Neural Network Accelerator," <a href="https://arxiv.org/abs/2601.19920">arXiv:2601.19920</a>, 2026.</li>
+<li>J. Beuchert, A. Rogers, "SnapperGPS: Algorithms for Energy-Efficient Low-Cost Location Estimation Using GNSS Signal Snapshots," <em>ACM SenSys</em> 2021. <a href="https://doi.org/10.1145/3485730.3485931">doi:10.1145/3485730.3485931</a>.</li>
+<li>J. Beuchert, A. Matthes, A. Rogers, "SnapperGPS: Open Hardware for Energy-Efficient, Low-Cost Wildlife Location Tracking with Snapshot GNSS," <em>J. Open Hardware</em> 7(1), 2023. <a href="https://doi.org/10.5334/joh.48">doi:10.5334/joh.48</a>.</li>
+<li>M.-A. Fortin, R. Landry Jr., "Implementation Strategies for a Universal Acquisition and Tracking Channel Applied to Real GNSS Signals," <em>Sensors</em> 16(5):624, 2016. <a href="https://doi.org/10.3390/s16050624">doi:10.3390/s16050624</a>.</li>
+<li>K. Borre et al., <em>A Software-Defined GPS and Galileo Receiver</em>, Birkhäuser, 2007. <a href="https://doi.org/10.1007/978-0-8176-4540-3">doi:10.1007/978-0-8176-4540-3</a>. The standard reference for acquisition methods; start here.</li>
+<li>Garzia et al., "NAPA: A fully integrated multi-constellation two-frequency single-chip GNSS receiver," <em>IEEE/ION PLANS</em> 2014, pp. 1075–1083.</li>
+<li>u-blox, UBX-G6010 product summary (u-blox 6, 50 channels, 67 mW continuous).</li>
+<li>"CCSA: A 394TOPS/W Mixed-Signal GPS Accelerator with Charge-Based Correlation Computing for Signal Acquisition," <em>ISSCC</em> 2023. Confirmed from the <a href="https://english.seiee.sjtu.edu.cn/english/info/35546.htm">SJTU announcement</a>; DOI not found.</li>
+<li>Lin Wei et al., "Low-power Navigation Signal Acquisition Circuit Design Based on In-Memory Computing," <em>J. Guangdong Univ. of Technology</em>. <a href="https://xbzrb.gdut.edu.cn/en/article/doi/10.12052/gdutxb.250157">doi:10.12052/gdutxb.250157</a>.</li>
+<li>G. R. Lennen (Trimble), US 6,091,785, "Receiver having a memory based search for fast acquisition of a spread spectrum signal." <a href="https://patents.google.com/patent/US6091785">Google Patents</a>.</li>
+<li>C. Li et al., "Analog content-addressable memories with memristors," <em>Nat. Commun.</em> 11:1638, 2020. <a href="https://doi.org/10.1038/s41467-020-15254-4">doi:10.1038/s41467-020-15254-4</a>.</li>
+<li>G. Karunaratne et al., "In-memory hyperdimensional computing," <em>Nat. Electron.</em> 3:327–337, 2020. <a href="https://doi.org/10.1038/s41928-020-0410-3">doi:10.1038/s41928-020-0410-3</a>.</li>
+<li>M. Imani et al., "Exploring hyperdimensional associative memory," <em>HPCA</em> 2017. <a href="https://doi.org/10.1109/HPCA.2017.28">doi:10.1109/HPCA.2017.28</a>.</li>
+<li>A. Kazemi et al., "In-Memory Nearest Neighbor Search with FeFET Multi-Bit Content-Addressable Memories," <em>DATE</em> 2021. <a href="https://arxiv.org/abs/2011.07095">arXiv:2011.07095</a>.</li>
+<li>Narla et al., "Cross-layer Modeling and Design of Content Addressable Memories in Advanced Technology Nodes for Similarity Search," <a href="https://arxiv.org/abs/2403.15328">arXiv:2403.15328</a>, 2024.</li>
+<li>A. Grenier, E. S. Lohan, A. Ometov, J. Nurmi, "A Survey on Low-Power GNSS," <em>IEEE Commun. Surveys &amp; Tutorials</em> 25(3):1482–1509, 2023. <a href="https://doi.org/10.1109/COMST.2023.3265841">doi:10.1109/COMST.2023.3265841</a>.</li>
+</ol>
+<p>Hard-limiting loss of 1.96 dB (2/π) and 0.55 dB for 2 bits: MITRE report 09-3995 and Stein et al., <a href="https://arxiv.org/abs/1412.3964">arXiv:1412.3964</a>.</p>
+<div class="quiz" data-quiz="q8"></div>
+</section>
+
+<section id="next">
+<h2><span class="chap">Chapter 9</span>What comes next</h2>
+<h3>The plan as the repo states it</h3>
+<p><strong>Phase 4: the comparison on set B.</strong> Build <code>src/hdcam_gps/compare.py</code> with <code>compare(classifiers, scenarios, target_pfa) -&gt; Comparison</code>. It runs §4.3 (P<sub>d</sub> against C/N₀ and sensitivity), §4.4 (P<sub>fa</sub> per acquisition and per absent PRN) and §4.7 (CAM cost through <code>CountingHdCam</code>) on set B, and joins them into one table. It reads the frozen settings with <code>calibrate.load_calibration</code> and applies them with <code>FrozenSetting.apply</code>. <code>notebooks/family_comparison.ipynb</code> plots it, including the headline plot: tolerance fraction per family against the 12.5% silicon line and the ~50% ceiling.</p>
+<p>Set B is 40 skies × 7 scalings = 280 records. Measured per record on a 4-core container: code-only 25 s, segmented 64 s, thermometer 12 s, baseline 9 s, FFT 0.5 s. That is about <strong>8 hours</strong>. The simulator cache makes extra scalings free, and <code>decide_grid</code> is not needed because phase 4 runs one setting per family.</p>
+<p><strong>Phase 5: the write-up.</strong> The README family table replaces the two-classifier table, and PROPOSAL step 4 gets the measured numbers. <code>HANDOFF.md</code> says it should lead with both halves of the result: the tolerance is 3–4× too wide for silicon (phase 1), and the baseline CAM detects 27% of satellites where the correlator detects 98.5% at the same false-alarm rate (phase 3), which is a sensitivity result, not a buildability one.</p>
+
+<h3>Open decisions you now own</h3>
+<div class="tbl"><table>
+<thead><tr><th>Decision</th><th>Options</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td><strong>1. Phase 4 scale</strong></td><td>(a) Full 280 records, about 8 h, with per-family checkpoints like <code>run_family_calibration.py</code>. (b) Cut the scaling list, and say so in the plan.</td><td><code>HANDOFF.md</code> asks for this decision before phase 4 starts. Code-only (25 s/record) and segmented (64 s/record) dominate the run time.</td></tr>
+<tr><td><strong>2. The operating point</strong></td><td>(a) Keep 10 ms and state in phase 5 that a longer dwell buys d′. (b) Add a longer-dwell measurement.</td><td>d′ is 3.01 and 3.48 in the two bins inside 38–42 dB-Hz, against 6.25 at 45 dB-Hz. Nine looks of 10 ms do not separate at that d′. <code>HANDOFF.md</code> names dwell as "the obvious lever neither phase has pulled". Kill rule (ii) was fixed before the runs; the handoff warns against reinterpreting it.</td></tr>
+<tr><td><strong>3. The silicon numbers</strong></td><td>Check 12.5%, 512 × 64, 0.19 fJ and the sensitivity spread against the JSSC full text.</td><td>Not confirmed by any abstract-level source (Chapter 8). Every tolerance verdict depends on 12.5%.</td></tr>
+<tr><td><strong>4. Prior art in the write-up</strong></td><td>Add CCSA, RRAM-crossbar acquisition and the Trimble patents; reword the [18] ceiling claim and the u-blox figure.</td><td>Chapter 8. Risk 7 asked for this search.</td></tr>
+<tr><td><strong>5. The circuit question</strong></td><td>PROPOSAL step 2: can a 2046-bit word reach ~45% tolerance, at what Veval, with what spread across corners?</td><td>A stop condition the Python study cannot answer. Phase 1 showed no arrangement of the CAM brings the fraction below 36%.</td></tr>
+</tbody></table></div>
+<h3>Known inconsistencies in the repo</h3>
+<p>Found while building this handbook. None changes a verdict, but each will bite whoever runs phase 4.</p>
+<ol>
+<li><strong>Segmented geometry.</strong> The study plan says 16 segments, 21 504 rows and 36 832 searches. The code has 15 segments (⌊1023/64⌋), 20 160 rows and 40 668 searches.</li>
+<li><strong>Differential searches.</strong> The plan says 9 208; the code gives 9 106, because the 102-sample lag lengthens each window.</li>
+<li><strong>Why baseline and code-only share a grid.</strong> The plan credits the 997.5 ± 13.6 screen floor. The grid comes from <code>chance_floor</code>, 1023 ± 22.6. The conclusion holds; the stated reason is wrong.</li>
+<li><strong><code>FrozenSetting</code> is incomplete.</strong> It omits <code>min_segments</code> (segmented was calibrated at 5), the mixer and the refiner. Phase 4 must rebuild classifiers with the same defaults.</li>
+<li><strong>The reference's precision.</strong> PROPOSAL targets "within 1 dB of the 1-bit FFT reference". <code>fft_acq.py</code> runs on the full-precision samples, so the study's reference is the full-precision FFT.</li>
+<li><strong><code>make_proposal_pdf.py</code></strong> fails from the repo root; it reads <code>PROPOSAL.md</code> from the working directory.</li>
+<li><strong>Calibration runtime.</strong> The script says about 3 h, <code>CLAUDE.md</code> says about 6 h, the run recorded 4.1 h.</li>
+<li><strong>Stale docstring.</strong> <code>tests/test_segmented_acq.py</code> still expects m-of-K voting to restore Doppler.</li>
+<li><strong>Results not saved.</strong> The calibration grid's per-setting P<sub>fa</sub> and P<sub>d</sub> and the per-look D<sub>true</sub> distances went to the console only. Reproducing them takes a re-run with the submodule (about 4 h and 45 min).</li>
+</ol>
+<div class="quiz" data-quiz="q9"></div>
+</section>
+
+<section id="code">
+<h2><span class="chap">Chapter 10</span>The codebase, file by file</h2>
+<p>Python 3.12, managed by <code>uv</code>; runtime dependencies are only <code>numpy</code> and <code>tqdm</code>. There is no linter, type checker or CI. Tests mirror sources one-to-one as <code>tests/test_&lt;module&gt;.py</code>.</p>
+<pre><code>uv sync --group dev                       # install, with pytest, jupyter, matplotlib, weasyprint
+git submodule update --init --recursive   # needed for the simulator backend
+uv run pytest                             # 925 tests; simulator tests SKIP without the submodule
+uv run pytest tests/test_cam_acq.py       # one file</code></pre>
+
+<h3>Two branches</h3>
+<div class="tbl"><table>
+<thead><tr><th>Branch</th><th>Tip</th><th>What it holds</th></tr></thead>
+<tbody>
+<tr><td><span class="pill br-m">master</span></td><td><code>f78cf5c</code>, 2026-09-06, 8 commits</td><td>The starting point: C/A codes, the HD-CAM model, the FFT reference, the original 1-bit HD-CAM classifier, the signal generators with the gps-sdr-sim driver, the scorer, and the example notebook.</td></tr>
+<tr><td><span class="pill br-x">cam-algorithm-exploration</span></td><td><code>280ded5</code>, 2026-09-27, +25 commits</td><td>Everything on master, plus the proposal, the family study plan and handoff, the shared CAM base class, four new families, the second stage, the screen, calibration, the cached scenario bank, the two study scripts and their checked-in results.</td></tr>
+</tbody></table></div>
+<p>The exploration branch also changed four master files. <code>hdcam_acq.py</code> was rewritten onto the shared base class. Master counted a vote per hit over every window and rotation, reported the most-voted cell, and ran at a threshold of about 255 with stored phases at 0° and 45°. <code>fft_acq.py</code> was split into <code>surfaces()</code> and <code>decide()</code> so calibration can replay ratios. <code>signal_gen.py</code> gained per-satellite C/N₀. <code>evaluate.py</code> gained <code>score_events</code> and the scenario bank argument.</p>
+
+<h3>How the pieces connect</h3>
+<pre class="mermaid">
+flowchart LR
+  subgraph signals[Signals]
+    SIM[gps_sdr_sim.py<br/>driver] --> CACHE[sim_cache.py]
+    CACHE --> SG[signal_gen.py<br/>Scenario + truth]
+    CA[ca_code.py] --> SG
+    SG --> BANK[scenarios.py<br/>ScenarioBank]
+  end
+  subgraph classifiers[Classifiers]
+    BASE[acq_base.py<br/>AcqConfig, contract] --> FFT[fft_acq.py]
+    BASE --> CAMA[cam_acq.py<br/>one decision rule]
+    HD[hdcam.py] --> PK[hdcam_packed.py] --> CAMA
+    CAMA --> F1[hdcam_acq.py<br/>baseline]
+    CAMA --> F2[code_only_acq.py]
+    CAMA --> F3[thermometer_acq.py]
+    CAMA --> F4[segmented_acq.py]
+    CAMA --> F5[diff_acq.py]
+    F4 & F5 --> REF[refine.py<br/>Doppler 2nd stage]
+  end
+  subgraph measure[Measurement]
+    EV[evaluate.py<br/>score_events]
+    SCR[screen.py<br/>D_true, D_wrong, d']
+    CAL[calibrate.py<br/>matched P_fa]
+    COST[cam_cost.py]
+  end
+  BANK --> EV & SCR & CAL
+  FFT & F1 & F2 & F3 & REF --> CAL
+  CAL --> JSON[(docs/calibration.json)]
+  SCR --> JSON2[(docs/screen_results.json)]
+</pre>
+
+<h3>Four rules not visible from any single file</h3>
+<ul>
+<li><strong>The classifier contract</strong> (<code>acq_base.py</code>). Public <code>acquire()</code> asserts the sample count and calls <code>_acquire()</code>. Subclasses override <code>_acquire</code>, never <code>acquire</code>. Everything downstream accepts any object with this interface.</li>
+<li><strong>A CAM family overrides hooks, not the decision.</strong> A family supplies <code>build_codebook</code>, <code>row_index</code>, <code>query_index</code> and <code>query_variants</code>, and sets <code>n_rows</code> and <code>n_columns</code> before <code>super().__init__</code>. Four lines map any (row, query) hit to (PRN, Doppler bin, code phase, look). A family that does not fit them needs a new index field, not a second <code>_acquire</code>.</li>
+<li><strong><code>AcqConfig</code> is the single source of geometry.</strong> Samples per code, samples per acquisition and the Doppler grid are derived properties; nothing stores its own copy.</li>
+<li><strong>One rule, two data paths.</strong> <code>search_mode="cam"</code> searches query by query and measures survivors with <code>tightest_match</code>; <code>search_mode="table"</code> reads the same hits off a GEMM distance table. Tests assert they agree.</li>
+</ul>
+
+<p>Open a card for the file's interface, how it works, what changed between branches, and what its tests pin down.</p>
+<div class="layer">Foundations</div>
+<details class="mod"><summary><span class="fn">acq_base.py</span><span class="pill br-m">master</span><span class="role">GPS constants, the configuration, the result type and the classifier contract.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>AcqConfig(fs_hz, prn_list, doppler_min_hz, doppler_max_hz, doppler_step_hz, n_codes)</code>, frozen; derived <code>samples_per_code</code>, <code>samples_per_acquisition</code>, <code>observation_time_s</code>, <code>doppler_grid_hz</code></li><li><code>PrnResult(prn, doppler_hz, code_phase)</code>, frozen; code phase in samples</li><li><code>GpsL1AcqClassifier(config)</code>: <code>acquire(samples)</code> asserts the length, then calls <code>_acquire</code></li></ul><h5>How it works</h5><ul><li><code>samples_per_code = int(fs_hz * 1e-3)</code>: 1023 at the study's 1.023 MHz.</li><li><code>doppler_grid_hz = arange(min, max + step, step)</code>, both endpoints included: 21 bins.</li><li>Every other module sizes itself from <code>AcqConfig</code>; none keeps its own copy of the geometry.</li></ul><h5>Tests</h5><ul><li>Truncation of samples per code; grid endpoints and spacing; frozen dataclasses; the length assertion runs before <code>_acquire</code>.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">ca_code.py</span><span class="pill br-m">master</span><span class="role">C/A Gold codes from the G1 and G2 shift registers, and their sampling.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>G2_TAPS</code>: PRN 1–32 to G2 tap pairs (IS-GPS-200)</li><li><code>ca_code(prn) -&gt; ±1[1023]</code></li><li><code>sampled_ca_code(prn, fs_hz)</code>: one code period at <code>fs</code></li></ul><h5>How it works</h5><ul><li>Both registers start all ones. Chip = <code>g1[9] ^ g2[a] ^ g2[b]</code>; G1 feedback x³+x¹⁰, G2 feedback taps 2, 3, 6, 8, 9, 10.</li><li>Output maps 0 → +1, 1 → −1. Sampling takes the nearest lower chip, with no interpolation.</li></ul><h5>Tests</h5><ul><li>First and last 10 chips match the reference; codes are balanced; off-peak correlation takes only {−65, −1, 63}.</li></ul></div></details>
+<div class="layer">The CAM model</div>
+<details class="mod"><summary><span class="fn">hdcam.py</span><span class="pill br-m">master</span><span class="role">A behavioural HD-CAM: a bit grid that returns every row within <code>hd_threshold</code> of a query.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>HdCam(n_rows, n_columns, hd_threshold)</code></li><li><code>write_row</code>, <code>write_array</code>, <code>set_hd_threshold</code></li><li><code>search_cam(query) -&gt; row indices</code></li></ul><h5>How it works</h5><ul><li>Distance = count of <code>grid != query</code> per row; returns rows with distance ≤ threshold (inclusive).</li><li>It reports membership only, never a distance, like the hardware. That is why <code>tightest_match</code> must bisect.</li></ul><h5>Tests</h5><ul><li>Threshold 0 matches only exact rows; threshold n−1 matches all but the complement; random grids match brute force.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">hdcam_packed.py</span><span class="pill br-x">exploration</span><span class="role">The same CAM answering from an <code>np.packbits</code> copy: 4.0 ms → 0.30 ms per search on the baseline codebook.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>PackedHdCam(HdCam)</code>: overrides the writes and <code>search_cam</code></li></ul><h5>How it works</h5><ul><li>Packs rows to bytes, XORs with the packed query, sums <code>np.bitwise_count</code>. Padding bits are zero on both sides, so they never count.</li><li><code>HdCam</code> stays as the slow reference; tests hold the two equal.</li></ul><h5>Tests</h5><ul><li>Agrees with <code>HdCam</code> at every threshold and row width; padding never counts; writes update what a search sees.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">cam_cost.py</span><span class="pill br-x">exploration</span><span class="role">Counts what one acquisition costs the CAM: searches, threshold writes, bits, energy, latency, tolerance.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>CamCost</code>: <code>total_bits</code>, <code>bit_comparisons</code>, <code>energy_uj</code> (0.19 fJ/bit), <code>latency_us</code> (8 ns/search), <code>tolerance_fraction</code>, <code>resolution_fraction</code></li><li><code>CountingHdCam(PackedHdCam)</code>: counts searches, writes and hits</li><li><code>measure_cost(classifier, samples)</code></li></ul><h5>How it works</h5><ul><li>Swaps the classifier's CAM for a counting one, runs a real acquisition including <code>tightest_match</code> bisections, restores the CAM.</li><li>Baseline closed form: 36 832 × 1 344 × 2 046 ≈ 1.0e11 bit comparisons, ≈ 19 µJ, ≈ 295 µs.</li></ul><h5>Tests</h5><ul><li>Counted first pass equals the closed form; a noise record bisects nothing; a strong satellite adds bisection searches.</li></ul></div></details>
+<div class="layer">Classifiers</div>
+<details class="mod"><summary><span class="fn">fft_acq.py</span><span class="pill br-m">master</span><span class="role">The FFT parallel code-phase search: the reference classifier.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>FftAcqClassifier(config, peak_ratio=2.5)</code></li><li><code>correlate(samples, prn) -&gt; power[21, 1023]</code></li><li><code>surfaces(samples)</code>, <code>decide(surfaces, peak_ratio)</code></li></ul><h5>How it works</h5><ul><li>Per Doppler bin: phase-continuous carrier wipe, reshape to (10, 1023), FFT × conj(code FFT), IFFT, sum |·|² over periods.</li><li>Per PRN: peak of the grid; second peak = largest value in the same Doppler row more than 1 chip away (circular). Report when ratio ≥ <code>peak_ratio</code>.</li><li>Default ratio 2.5; phase 3 calibrated 2.0.</li></ul><h5>Changed on exploration</h5><p>Split <code>_acquire</code> into <code>surfaces()</code> and <code>decide()</code> so calibration replays ratios over cached surfaces. Algorithm unchanged.</p><h5>Tests</h5><ul><li>Peaks at the injected cell; no strong peak for a wrong PRN; nothing for silence; <code>decide</code> at its own ratio equals <code>acquire</code>.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">cam_acq.py</span><span class="pill br-x">exploration</span><span class="role">The shared base of every CAM family, and the one decision rule (1 066 lines).</span></summary><div class="body"><h5>Interface</h5><ul><li><code>quantize_iq</code>, <code>rotate_quarter_turns</code>, <code>binomial_tail</code>, <code>per_look_false_alarm</code>, <code>hd_threshold_for_false_alarm</code></li><li><code>RowIndex(prn, doppler_bin, segment_offset, hypothesis)</code>, <code>QueryIndex(start, doppler_bin)</code>, <code>Cell(row, doppler_bin, code_phase)</code></li><li><code>CamAcqClassifier</code>: hooks <code>build_codebook</code>, <code>row_index</code>, <code>query_index</code>, <code>query_variants</code>; data paths <code>distance_table</code>, <code>matched_table</code>, <code>tightest_match</code>; decision <code>shortlist_cells</code>, <code>cells_from_table</code>, <code>rank_cells</code>, <code>decide</code>, <code>decide_grid</code>; <code>chance_floor</code>, <code>cost</code></li></ul><h5>How it works</h5><ul><li>Hit to hypothesis, for every family: <code>prn = row.prn[r]</code>; Doppler from the row, or from the query when the row says −1; <code>code_phase = (start − segment_offset) mod 1023</code>; <code>look = start // 1023</code>.</li><li>Table path: ±1 float32 GEMM, <code>hd = (n − s·b)/2</code>, exact because partial sums stay below 2²⁴; each entry is the minimum over a query's variants.</li><li>Decision: per (cell, look), count rows of the hypothesis that hit; a look votes when ≥ <code>min_segments</code>; a cell survives with ≥ <code>min_votes</code> looks; each PRN keeps its survivor with the smallest distance.</li><li>Defaults: <code>min_votes = ceil(n_looks/3) = 3</code>; threshold from a 1e-2 per-acquisition budget through the vote binomial and the Binomial(n, ½) floor: 947 for the baseline.</li><li><code>decide_grid</code> computes best distances once and votes once per threshold, then replays every (threshold, votes) setting through the same code as <code>decide</code>.</li></ul><h5>Tests</h5><ul><li>GEMM table equals a bit-counted table bit for bit; CAM and table paths return identical results; <code>decide_grid</code> equals <code>decide</code>; tighter settings never find more.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">hdcam_acq.py</span><span class="pill br-m">master</span><span class="role">The baseline family: 1 344 rows of (PRN, Doppler, stored phase) × 2 046 bits.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>OneBitHdCamClassifier(config, hd_threshold=None, n_codebook_phases=2, min_votes=None, search_mode="cam")</code></li><li><code>row_of</code>, <code>hypothesis_of</code>, <code>query_window</code>, <code>shortlist</code></li><li>re-exports the shared helpers from <code>cam_acq</code></li></ul><h5>How it works</h5><ul><li>Row <code>(prn·21 + bin)·2 + p</code> = <code>quantize_iq(code · e^{j2πf_d t} · e^{j2π(p+½)/8})</code>: stored phases 22.5° and 67.5°.</li><li>Queries: every contiguous 1023-sample window (9 208 starts, never wrapped), in 4 quarter turns.</li><li>About 80 lines of hooks; the decision is <code>CamAcqClassifier</code>'s.</li></ul><h5>Changed on exploration</h5><p>Rewritten onto <code>CamAcqClassifier</code>. Master counted a vote per hit over every window and rotation, reported the most-voted cell with <code>min_votes = 1</code>, ran at a threshold near 255, and stored phases at 0° and 45°.</p><h5>Tests</h5><ul><li>Rotation equals multiplying samples by j; the zero-Doppler row keeps both planes; planted satellites are recovered at any carrier phase; silence gives nothing.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">code_only_acq.py</span><span class="pill br-x">exploration</span><span class="role">Code-only family: 64 carrier-free rows; the query carries the Doppler.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>CodeOnlyHdCamClassifier(config, mixer="quadrant"|"exact", ...)</code></li><li><code>quadrants</code>, <code>bits_from_quadrants</code>, <code>rotate_quadrants</code></li><li><code>wipe_doppler(samples, start, doppler_bin)</code></li></ul><h5>How it works</h5><ul><li>Rows: <code>quantize_iq(code · e^{j2π(p+½)/8})</code>, 32 × 2.</li><li>Queries: 9 208 starts × 21 bins. Quadrant mixer: convert sign pairs to a quadrant 0–3, add a rounded phase ramp mod 4, convert back. No multiplier; up to 45° error per sample.</li><li>Exact mixer: full-precision NCO before quantising; an upper bound, not a 1-bit design.</li><li>Same 1 374 912 cells as the baseline.</li></ul><h5>Tests</h5><ul><li>Quadrant arithmetic round-trips; the quadrant mixer equals the exact one at 0 Hz; planted satellites come back; CAM and table paths agree.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">thermometer_acq.py</span><span class="pill br-x">exploration</span><span class="role">Thermometer family: 4 levels in unary, so Hamming distance is L1 distance; 1 344 × 6 138 bits.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>ThermometerHdCamClassifier(config, n_levels=4, level_step=0.9957, ...)</code></li><li><code>thermometer</code>, <code>levels_of</code>, <code>negate_thermometer</code>, <code>rotate_thermometer</code>, <code>quantize_thermometer</code>, <code>component_scale</code></li></ul><h5>How it works</h5><ul><li>Levels at {−step, 0, +step} × the per-component RMS; step 0.9957σ is the optimal 2-bit uniform quantiser for a Gaussian.</li><li>The query gain is the record's own RMS, never the simulator's noise level.</li><li>Rotation by j maps (I, Q) to (negate(Q), I); negation reverses and complements each unary word.</li><li>Threshold from the measured chance floor (about 39% of the word), because unary bits are dependent.</li></ul><h5>Tests</h5><ul><li><code>hd(thermometer(a), thermometer(b)) = |a − b|</code>; bit-domain rotation equals rotating samples first; planted satellites found.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">segmented_acq.py</span><span class="pill br-x">exploration</span><span class="role">Segmented family: 15 sub-rows of 128 bits per code period, voted 5 of 15; Doppler-blind.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>SegmentedHdCamClassifier(config, segment_bits=128, min_segments=None, search_mode="table", ...)</code></li></ul><h5>How it works</h5><ul><li>K = ⌊1023/64⌋ = 15 segments; 20 160 rows; the last 63 samples of each period are unused.</li><li>The only family that sets <code>RowIndex.hypothesis</code>, grouping its 15 sub-rows. <code>segment_offset = 64k</code> makes one 64-sample sliding query serve every segment: 10 167 starts × 4.</li><li>Defaults: <code>min_segments = 5</code>, <code>min_votes = 3</code>. Table path by default, because hits flood the CAM path.</li><li>Doppler-blind: 62.6 µs windows resolve only ~16 kHz. Wrap it in <code>refine.RefinedClassifier</code>.</li></ul><h5>Tests</h5><ul><li>A hit on segment k at start s votes for the code phase of segment 0 at s − 64k; every Doppler bin's best sub-row is at distance 0. (The module docstring still expects m-of-K to restore Doppler; phase 2 showed it cannot.)</li></ul></div></details>
+<details class="mod"><summary><span class="fn">diff_acq.py</span><span class="pill br-x">exploration</span><span class="role">Differential family: rows and queries of x[n]·x*[n−L]; the carrier cancels; dead at phase 1.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>DifferentialHdCamClassifier(config, lag_samples=None, ...)</code></li><li><code>unambiguous_lag(config)</code> → 102</li><li><code>differential</code>, <code>doppler_class</code>, <code>class_doppler_hz</code></li></ul><h5>How it works</h5><ul><li>128 rows: 32 PRNs × 4 Doppler classes (centres ±1 254 and ±3 761 Hz at L = 102).</li><li>Queries: 1 125-sample windows, 9 106 starts, one variant (no rotations).</li><li>D<sub>wrong</sub> is exactly n/2: no rotation minimum to pull it down.</li></ul><h5>Tests</h5><ul><li>The delay-multiply cancels carrier phase and turns Doppler into one constant phase; the lag that resolves one bin exceeds the unambiguous lag.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">refine.py</span><span class="pill br-x">exploration</span><span class="role">The Doppler second stage for blind families: a small, counted, 1-bit correlator.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>DopplerRefiner(config, mixer="quadrant")</code>: <code>scores</code>, <code>resolve</code>, <code>refine</code>, <code>cost</code></li><li><code>RefinedClassifier(inner)</code></li><li><code>RefinerCost</code></li></ul><h5>How it works</h5><ul><li>At the PRN and code phase the CAM named, wipe each of the 21 bins on the quadrant stream, multiply by the code, sum coherently per 1 ms, non-coherently over 10 ms; take the argmax.</li><li>21 × 10 230 one-bit MACs per detection: about 3 300× less than a full correlator search for 10 detections, and still a correlator.</li></ul><h5>Tests</h5><ul><li>Scores peak at the true bin for both mixers; a 45 dB-Hz satellite resolves under noise; <code>refine</code> keeps PRN and code phase.</li></ul></div></details>
+<div class="layer">Signals and records</div>
+<details class="mod"><summary><span class="fn">signal_gen.py</span><span class="pill br-m">master</span><span class="role">Labelled records (<code>Scenario</code>) from two backends, and per-satellite C/N₀.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>SatelliteTruth</code>, <code>Scenario(samples, truth, config)</code> with <code>matches()</code> and <code>expected_results()</code></li><li><code>generate_synthetic</code>, <code>random_scenario</code>, <code>generate_from_sim</code>, <code>scenario_from_record</code></li><li><code>measure_cn0_dbhz</code>, <code>amplitude_for_cn0</code></li></ul><h5>How it works</h5><ul><li>Unit-power complex noise, so N₀ = 1/f_s and amplitude = √(C/N₀ / f_s).</li><li><code>scenario_from_record</code> rescales a simulator record to a record-average C/N₀, labels it, measures each satellite's C/N₀ on the clean record, then adds noise.</li><li><code>measure_cn0_dbhz</code> searches ±1 sample around the label and takes the median over periods to ride out a data-bit flip.</li></ul><h5>Changed on exploration</h5><p>Added <code>measure_cn0_dbhz</code> and split out <code>scenario_from_record</code>. Master labelled every satellite with the record-average C/N₀.</p><h5>Tests</h5><ul><li>C/N₀ recovered within 0.2 dB, 0.3 dB in a crowd with nav data; reproducible per seed; <code>generate_from_sim</code> = <code>simulate</code> + <code>scenario_from_record</code>.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">gps_sdr_sim.py</span><span class="pill br-m">master</span><span class="role">Driver for the vendored gps-sdr-sim: build a patched copy, run it, parse samples and truth.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>build()</code>, <code>simulate(lat, lon, h, fs_hz, duration_s, rinex, start_time)</code>, <code>labels(record, offset)</code></li><li><code>SimulatedRecord</code>, <code>ChannelState</code>, <code>VisibleSatellite</code></li><li><code>sources_checked_out()</code></li></ul><h5>How it works</h5><ul><li>Copies the submodule sources to <code>third_party/build</code>, applies <code>third_party/patches/*.patch</code>, runs <code>make</code>. Needs <code>make</code>, <code>gcc</code> and <code>patch</code>.</li><li>Reads interleaved I/Q, normalises to unit RMS, parses <code>TRUTH</code> lines (Doppler, code phase in chips) per 0.1 s tick.</li><li><code>labels</code> converts elapsed chips into the forward code shift acquisition reports.</li></ul><h5>Tests</h5><ul><li>Parsers handle real output; a real run gives the requested shape and a truth state for every visible satellite (skipped without the submodule).</li></ul></div></details>
+<details class="mod"><summary><span class="fn">sim_cache.py</span><span class="pill br-x">exploration</span><span class="role">Caches simulator records, which do not depend on C/N₀ or noise.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>cached_simulate(**kwargs)</code>, <code>cache_key</code>, <code>save_record</code>, <code>load_record</code>, <code>clear_cache</code></li></ul><h5>How it works</h5><ul><li>In-process dict plus npz files under <code>third_party/cache/</code> (gitignored), keyed by a hash of the simulator arguments. One sky at seven scalings costs one simulator run.</li></ul><h5>Tests</h5><ul><li>Deterministic keys; records and labels round-trip; a fresh process reads back from disk.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">scenarios.py</span><span class="pill br-x">exploration</span><span class="role"><code>ScenarioBank</code>: build every record once, hand every classifier the same array, split skies into set A and set B.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>ScenarioBank.build(config, eval_config)</code>, <code>get(cn0, index)</code>, <code>split(n_calibration)</code>, <code>satellite_cn0_dbhz()</code></li></ul><h5>How it works</h5><ul><li>Sky i starts at 2022-01-01 + 17 min × i. <code>split</code> takes the first n skies as calibration and asserts no shared start time.</li></ul><h5>Tests</h5><ul><li>Two readers get the identical array object; split sides share no sky and keep every scaling.</li></ul></div></details>
+<div class="layer">Measurement</div>
+<details class="mod"><summary><span class="fn">evaluate.py</span><span class="pill br-m">master</span><span class="role">Scores any classifier over a C/N₀ sweep, and defines the study's event vocabulary.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>EvalConfig</code>, <code>evaluate(classifier, eval_config, scenarios=None)</code>, <code>EvaluationReport</code></li><li><code>score_events(scenario, results)</code> → <code>AcquisitionEvents</code></li><li><code>sky_start_time(index)</code></li></ul><h5>How it works</h5><ul><li><code>score_events</code>: found when Doppler is within one bin (500 Hz) of the true, unsnapped value and code phase within 1 sample; otherwise a wrong fix, counted as a miss and a false alarm; an absent PRN reported is a false alarm.</li></ul><h5>Changed on exploration</h5><p>Added <code>AcquisitionEvents</code>, <code>score_events</code>, <code>sky_start_time</code> and the <code>scenarios=</code> argument.</p><h5>Tests</h5><ul><li>A one-bin error is found and two bins is not; a wrong fix counts on both sides; two classifiers on one bank see the same records.</li></ul></div></details>
+<details class="mod"><summary><span class="fn">screen.py</span><span class="pill br-x">exploration</span><span class="role">The phase 1 screen: separation and required tolerance from distance tables, with no decision rule.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>screen(classifier, records)</code> → <code>Separation</code>; <code>.bins()</code>, <code>.at(cn0)</code>, <code>.table()</code></li><li><code>ScreenBin</code>, <code>kill_verdict</code></li><li><code>SILICON_TOLERANCE_FRACTION = 8/64</code></li></ul><h5>How it works</h5><ul><li>D<sub>true</sub> per satellite per look: minimum over the true rows and queries within ±1 sample of the label (about 24 distances for the baseline).</li><li>D<sub>wrong</sub>: every distance of an absent-PRN row, pooled into one mean and sd per family.</li><li>d′ and tolerance (90th percentile / width) per 2 dB bin; bins with fewer than 20 looks dropped.</li></ul><h5>Tests</h5><ul><li>A noiseless replica sits at 0; the floor is the rotation minimum, not the satellites (loud and empty records agree within 1%).</li></ul></div></details>
+<details class="mod"><summary><span class="fn">calibrate.py</span><span class="pill br-x">exploration</span><span class="role">Matched-P<sub>fa</sub> calibration for any family and for the FFT reference; freezes the picks.</span></summary><div class="body"><h5>Interface</h5><ul><li><code>OperatingPoint</code>, <code>Candidate</code>, <code>CalibrationResult</code>, <code>FrozenSetting</code>, <code>save_calibration</code>, <code>load_calibration</code></li><li>Replayers: <code>CamCalibrator</code>, <code>RefinedCamCalibrator</code>, <code>PeakRatioCalibrator</code></li><li><code>run_calibration</code>, <code>match_false_alarm(result, target, bound)</code>, <code>binomial_upper_bound</code>, <code>binomial_lower_bound</code></li></ul><h5>How it works</h5><ul><li>Grid: thresholds at the chance floor − σ·sd for σ in 1.5…5.0 (8 values) × votes {2, 3, 4, 6}: 32 settings; 8 peak ratios for the FFT.</li><li>Each record's table is replayed through <code>decide_grid</code> and scored with <code>score_events</code>.</li><li>Pick: per vote count the loosest threshold with measured P<sub>fa,acq</sub> ≤ 1e-2, then the highest P<sub>d</sub> in 38–42 dB-Hz.</li><li><code>RefinedCamCalibrator</code> runs the Doppler second stage inside the loop without touching the refiner's cost counter.</li><li><code>FrozenSetting</code> stores threshold, votes and ratio, not <code>min_segments</code>, mixer or refiner.</li></ul><h5>Tests</h5><ul><li>Replay equals the classifier; Clopper-Pearson bounds behave; the upper-bound gate cannot be met on too few records; JSON round-trips.</li></ul></div></details>
+<div class="layer">Everything else</div>
+<div class="tbl"><table>
+<thead><tr><th>Path</th><th>Branch</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>src/hdcam_gps/__init__.py</code>, <code>py.typed</code></td><td><span class="pill br-m">master</span></td><td>Empty package marker and typing marker. Import everything by module path.</td></tr>
+<tr><td><code>tests/test_&lt;module&gt;.py</code></td><td>both</td><td>One file per module, 925 tests in total. Directed tests use a small config (<code>fs_hz = 204.6e3</code>, 2 PRNs, 3 Doppler bins, <code>n_codes = 2</code>) with sentence-style names; statistics live in notebooks and scripts. Simulator tests skip without the submodule.</td></tr>
+<tr><td><code>scripts/run_family_screen.py</code></td><td><span class="pill br-x">exploration</span></td><td>Phase 1. Builds 20 set-A skies at 54, 45 and 36 dB-Hz (60 records), screens six classifiers on the table path, writes <code>docs/screen_results.json</code>. About 45 minutes; needs the submodule.</td></tr>
+<tr><td><code>scripts/run_family_calibration.py</code></td><td><span class="pill br-x">exploration</span></td><td>Phase 3. 140 set-A records, calibrates the FFT reference and four families (segmented through <code>RefinedCamCalibrator</code>), rewrites <code>docs/calibration.json</code> after each family. The recorded run took 4.1 h.</td></tr>
+<tr><td><code>scripts/make_proposal_pdf.py</code></td><td><span class="pill br-x">exploration</span></td><td>Renders the proposal to PDF with <code>markdown</code> and WeasyPrint. Reads <code>PROPOSAL.md</code> from the working directory, so run it from <code>docs/</code>.</td></tr>
+<tr><td><code>notebooks/example_run.ipynb</code></td><td><span class="pill br-m">master</span></td><td>Walkthrough: Gold-code correlation, a synthetic record, the FFT grid, the HD-CAM codebook, a scored sweep of both classifiers, a real simulated sky. Re-run on exploration at <code>n_codes = 10</code>.</td></tr>
+<tr><td><code>notebooks/family_screen.ipynb</code></td><td><span class="pill br-x">exploration</span></td><td>Plots <code>docs/screen_results.json</code> only: floors, tolerance against C/N₀ with the 12.5% and 50% lines, d′ with the kill line, the rule (i) table.</td></tr>
+<tr><td><code>docs/PROPOSAL.md</code></td><td><span class="pill br-x">exploration</span></td><td>The research question, the two algorithms, the seven risks, baselines, metrics, targets.</td></tr>
+<tr><td><code>docs/CAM_FAMILY_STUDY.md</code></td><td><span class="pill br-x">exploration</span></td><td>The plan and its authority: families, cost model, measurement definitions (§4), phasing, verdicts, kill rules.</td></tr>
+<tr><td><code>docs/HANDOFF.md</code></td><td><span class="pill br-x">exploration</span></td><td>State at the end of phase 3, two corrections, what phase 4 must build and decide.</td></tr>
+<tr><td><code>docs/screen_results.json</code>, <code>docs/calibration.json</code></td><td><span class="pill br-x">exploration</span></td><td>Checked-in results of phases 1 and 3. Read them rather than re-running. They keep per-bin means and percentiles and the frozen picks, not the per-look distances or the full calibration grid.</td></tr>
+<tr><td><code>docs/agents/*.md</code></td><td>this branch</td><td>Agent-skill configuration: GitHub Issues, triage labels, domain-doc layout.</td></tr>
+<tr><td><code>CLAUDE.md</code></td><td><span class="pill br-x">exploration</span></td><td>Commands, architecture rules and module map for Claude Code sessions.</td></tr>
+<tr><td><code>.claude/agents/signal-processing-algo-engineer.md</code></td><td><span class="pill br-x">exploration</span></td><td>A subagent for acquisition work: override <code>_acquire</code>, derive geometry from <code>AcqConfig</code>, keep slow references for fast paths, state losses in dB where they occur.</td></tr>
+<tr><td><code>.claude/skills/technical-writing/SKILL.md</code></td><td><span class="pill br-x">exploration</span></td><td>The repo's prose style for docstrings, docs and commit messages.</td></tr>
+<tr><td><code>third_party/gps-sdr-sim</code>, <code>.gitmodules</code></td><td><span class="pill br-m">master</span></td><td>The simulator submodule, never modified; run <code>git submodule update --init --recursive</code>.</td></tr>
+<tr><td><code>third_party/patches/0001-report-doppler-and-code-phase.patch</code></td><td><span class="pill br-m">master</span></td><td>Seven lines after <code>computeCodePhase</code> in <code>gpssim.c</code>: print <code>TRUTH tick prn f_carr code_phase</code> when run with <code>-v</code>.</td></tr>
+<tr><td><code>pyproject.toml</code>, <code>uv.lock</code>, <code>.python-version</code></td><td><span class="pill br-m">master</span></td><td>Python ≥ 3.12; <code>numpy ≥ 2.5.2</code>, <code>tqdm</code>; dev group adds pytest, jupyter, matplotlib, nbformat, and on exploration weasyprint and markdown.</td></tr>
+<tr><td><code>.gitignore</code>, <code>.vscode/settings.json</code></td><td><span class="pill br-m">master</span></td><td>Ignores build output and <code>third_party/cache/</code>; a cSpell word list.</td></tr>
+<tr><td><code>learning/</code></td><td>this branch</td><td>This handbook and its teaching workspace: mission, notes, learning records, references.</td></tr>
+</tbody></table></div>
+
+<div class="quiz" data-quiz="q10"></div>
+</section>
+
+<section id="glossary">
+<h2><span class="chap">Reference</span>Glossary</h2>
+<dl class="gl">
+<dt>Acquisition</dt><dd>Deciding which satellites are present and estimating each one's Doppler bin and code phase, coarsely enough to hand over to tracking.</dd>
+<dt>C/A code, PRN</dt><dd>The 1023-chip Gold code each GPS satellite spreads with, repeating every 1 ms. The PRN number (1–32) names the satellite and its code.</dd>
+<dt>Code phase</dt><dd>Where the code period starts inside the record, in samples (0–1022 at 1.023 MHz, where one sample is one chip).</dd>
+<dt>Doppler bin</dt><dd>One of 21 carrier-frequency hypotheses from −5 000 to +5 000 Hz in 500 Hz steps.</dd>
+<dt>C/N₀</dt><dd>Carrier-to-noise density in dB-Hz, measured per satellite in this study. 40 dB-Hz is a per-sample SNR of −20 dB at 1.023 MHz.</dd>
+<dt>HD-CAM</dt><dd>A content-addressable memory that returns every row within a Hamming-distance threshold of the query, in one parallel search.</dd>
+<dt>Row, codebook</dt><dd>A stored replica word; the codebook is all rows. The baseline row is one code period of one (PRN, Doppler bin, stored phase), 2046 bits.</dd>
+<dt>Query</dt><dd>One window of the record, quantised like a row and presented to the CAM. The baseline issues one per start sample, in 4 rotations.</dd>
+<dt>Rotation, stored phase</dt><dd>The two ways the classifier covers carrier phase: 4 bit-level quarter turns of the query, times 2 stored phases per row, for 8 hypotheses.</dd>
+<dt>Look</dt><dd>One code period of the record. Each code phase gets 9 looks in 10 ms.</dd>
+<dt>Cell, hypothesis</dt><dd>A hypothesis is the set of rows voted together (one row, except in the segmented family). A cell is a hypothesis at one code phase; votes and distances attach to cells.</dd>
+<dt>Threshold, votes</dt><dd><code>hd_threshold</code>: the largest distance that counts as a hit. <code>min_votes</code>: looks a cell needs to survive. Calibration picks both.</dd>
+<dt>D<sub>true</sub>, D<sub>wrong</sub>, d′</dt><dd>Distance of the true row at the true code phase (best of 8 phase hypotheses); distances of absent-PRN rows; their separation in units of sd D<sub>wrong</sub>.</dd>
+<dt>Tolerance fraction</dt><dd>The threshold divided by the word width. The study's central number: 36–50% needed, 12.5% shown in silicon.</dd>
+<dt>Family</dt><dd>One arrangement of the CAM: baseline, code-only, thermometer, segmented, differential.</dd>
+<dt>Doppler-blind</dt><dd>A family that names PRN and code phase but cannot resolve Doppler (segmented, differential). It needs <code>refine.py</code>'s second stage.</dd>
+<dt>Set A, set B</dt><dd>The 20 calibration skies and the 40 evaluation skies. Set B stays untouched until phase 4.</dd>
+<dt>Found, wrong fix, miss, false alarm</dt><dd>The study's event vocabulary (§4.1). A wrong fix counts as a miss and a false alarm.</dd>
+<dt>Kill rule</dt><dd>One of three pre-registered conditions that end a family. Rule (ii): P<sub>d</sub> ≥ 0.9 at 40 dB-Hz at the target false-alarm rate.</dd>
+</dl>
+</section>
+
+<footer>
+<p>Built from <code>docs/PROPOSAL.md</code>, <code>docs/CAM_FAMILY_STUDY.md</code>, <code>docs/HANDOFF.md</code>, <code>docs/screen_results.json</code>, <code>docs/calibration.json</code> and the source on branch <code>cam-algorithm-exploration</code> at <code>280ded5</code>. Figures 1–3 run the real C/A codes and the same quantisation and rotation rules as the code, in your browser. Figure 4 is a Gaussian model fitted to the screen. Figures 5–7 plot the checked-in study results and closed-form costs.</p>
+<p class="ask">Something unclear? Ask Claude in the session that built this handbook: it is your teacher for this study, and every chapter can go deeper.</p>
+</footer>
+
+</main>
+</div>
+
+<script>
+"use strict";
+/* ---------- shared helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const N = 1023, FS = 1.023e6;
+const redrawers = [];
+function onRedraw(fn) { redrawers.push(fn); fn(); }
+let rzT = 0;
+function redrawAll() { cancelAnimationFrame(rzT); rzT = requestAnimationFrame(() => redrawers.forEach(f => f())); }
+window.addEventListener("resize", redrawAll);
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll); } catch (e) {}
+new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+function setupCanvas(cv) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth || cv.parentElement.clientWidth;
+  const h = +cv.getAttribute("height");
+  cv.style.height = h + "px";
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr) || !cv._h) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv._h = h;
+  }
+  const g = cv.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  return { g, w, h };
+}
+function font(g, size = 11, w = 400) { g.font = `${w} ${size}px "JetBrains Mono", ui-monospace, monospace`; }
+
+/* seeded RNG and Gaussian noise */
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+
+/* GPS C/A code, same G2 taps as src/hdcam_gps/ca_code.py */
+const G2_TAPS = { 1:[2,6],2:[3,7],3:[4,8],4:[5,9],5:[1,9],6:[2,10],7:[1,8],8:[2,9],9:[3,10],10:[2,3],11:[3,4],12:[5,6],13:[6,7],14:[7,8],15:[8,9],16:[9,10],17:[1,4],18:[2,5],19:[3,6],20:[4,7],21:[5,8],22:[6,9],23:[1,3],24:[4,6],25:[5,7],26:[6,8],27:[7,9],28:[8,10],29:[1,6],30:[2,7],31:[3,8],32:[4,9] };
+const caCache = {};
+function caCode(prn) {
+  if (caCache[prn]) return caCache[prn];
+  const [ta, tb] = G2_TAPS[prn];
+  const g1 = new Array(10).fill(1), g2 = new Array(10).fill(1), out = new Int8Array(N);
+  for (let i = 0; i < N; i++) {
+    const chip = g1[9] ^ g2[ta - 1] ^ g2[tb - 1];
+    out[i] = 1 - 2 * chip;
+    const f1 = g1[2] ^ g1[9], f2 = g2[1] ^ g2[2] ^ g2[5] ^ g2[7] ^ g2[8] ^ g2[9];
+    for (let k = 9; k > 0; k--) { g1[k] = g1[k - 1]; g2[k] = g2[k - 1]; }
+    g1[0] = f1; g2[0] = f2;
+  }
+  return (caCache[prn] = out);
+}
+/* received record: one satellite, unit-power complex noise */
+function received(prn, tau, fd, theta, cn0, nCodes, seed, noise = true) {
+  const r = rng(seed), a = Math.sqrt(Math.pow(10, cn0 / 10) / FS), c = caCode(prn);
+  const L = N * nCodes, re = new Float64Array(L), im = new Float64Array(L), s = Math.SQRT1_2;
+  for (let n = 0; n < L; n++) {
+    const ph = 2 * Math.PI * fd * n / FS + theta, chip = c[((n - tau) % N + N) % N];
+    re[n] = a * chip * Math.cos(ph) + (noise ? s * gauss(r) : 0);
+    im[n] = a * chip * Math.sin(ph) + (noise ? s * gauss(r) : 0);
+  }
+  return { re, im };
+}
+
+/* ---------- Figure 1: correlation ---------- */
+(function fig1() {
+  const sel = $("#f1-prn");
+  for (let p = 1; p <= 32; p++) sel.add(new Option("PRN " + p + (p === 7 ? " (present)" : ""), p));
+  sel.value = 7;
+  const TRUE = { prn: 7, tau: 400, fd: 1600, th: 0.7 };
+  let seed = 11, power = null, info = {};
+  function compute() {
+    const prn = +sel.value, fd = +$("#f1-dop").value, cn0 = +$("#f1-cn0").value, nc = +$("#f1-nc").value;
+    $("#f1-dop-o").textContent = fd + " Hz"; $("#f1-cn0-o").textContent = cn0 + " dB-Hz"; $("#f1-nc-o").textContent = nc;
+    const { re, im } = received(TRUE.prn, TRUE.tau, TRUE.fd, TRUE.th, cn0, nc, seed);
+    const c = caCode(prn); power = new Float64Array(N);
+    const zr = new Float64Array(N), zi = new Float64Array(N);
+    for (let m = 0; m < nc; m++) {
+      for (let k = 0; k < N; k++) { const n = m * N + k, ph = -2 * Math.PI * fd * n / FS, co = Math.cos(ph), si = Math.sin(ph);
+        zr[k] = re[n] * co - im[n] * si; zi[k] = re[n] * si + im[n] * co; }
+      for (let t = 0; t < N; t++) { let sr = 0, si2 = 0;
+        for (let k = 0; k < N; k++) { const ch = c[(k - t + N) % N]; if (ch > 0) { sr += zr[k]; si2 += zi[k]; } else { sr -= zr[k]; si2 -= zi[k]; } }
+        power[t] += sr * sr + si2 * si2; }
+    }
+    let pk = 0; for (let t = 1; t < N; t++) if (power[t] > power[pk]) pk = t;
+    let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && power[t] > sec) sec = power[t]; }
+    const df = fd - TRUE.fd, x = df * 1e-3, sinc = x === 0 ? 1 : Math.abs(Math.sin(Math.PI * x) / (Math.PI * x));
+    info = { pk, ratio: power[pk] / sec, prn, df, sinc, cn0 };
+  }
+  function draw() {
+    const cv = $("#f1-c"), { g, w, h } = setupCanvas(cv);
+    const L = 44, R = 12, T = 12, B = 30, pw = w - L - R, ph = h - T - B;
+    let mx = 0; for (const v of power) mx = Math.max(mx, v);
+    g.strokeStyle = css("--rule"); g.lineWidth = 1; g.fillStyle = css("--muted"); font(g, 10.5);
+    for (let i = 0; i <= 4; i++) { const y = T + ph - ph * i / 4; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); }
+    g.textAlign = "center";
+    for (let t = 0; t <= 1000; t += 200) { const x = L + pw * t / (N - 1); g.fillText(t, x, h - 12); }
+    g.fillText("code phase (samples = chips)", L + pw / 2, h - 1);
+    g.save(); g.translate(11, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("power", 0, 0); g.restore();
+    const xt = L + pw * TRUE.tau / (N - 1);
+    g.setLineDash([3, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(xt, T); g.lineTo(xt, T + ph); g.stroke(); g.setLineDash([]);
+    g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", xt + 4, T + 10);
+    g.strokeStyle = css("--s1"); g.lineWidth = 1.5; g.beginPath();
+    for (let t = 0; t < N; t++) { const x = L + pw * t / (N - 1), y = T + ph - ph * power[t] / (mx || 1); t ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke();
+    const det = info.ratio >= 2, right = info.prn === TRUE.prn && Math.abs(info.pk - TRUE.tau) <= 1;
+    $("#f1-r").innerHTML = `<span>peak at <b>${info.pk}</b></span><span>peak / second peak <b>${info.ratio.toFixed(2)}</b></span>` +
+      `<span>Doppler error <b>${info.df} Hz</b>, coherent amplitude <b>${(info.sinc * 100).toFixed(0)}%</b></span>` +
+      `<span>${det ? (right ? '<span class="pill ok">detected, right cell</span>' : '<span class="pill no">false alarm</span>') : '<span class="pill no">below ratio 2.0</span>'}</span>`;
+  }
+  const go = () => { compute(); draw(); };
+  ["#f1-prn", "#f1-dop", "#f1-cn0", "#f1-nc"].forEach(id => $(id).addEventListener("input", go));
+  $("#f1-redraw").addEventListener("click", () => { seed++; go(); });
+  compute(); onRedraw(draw);
+})();
+
+/* ---------- Figure 2: one query, one row ---------- */
+function quantize(re, im, off = 0) { const b = new Uint8Array(2 * N); for (let k = 0; k < N; k++) { b[k] = re[off + k] > 0 ? 1 : 0; b[N + k] = im[off + k] > 0 ? 1 : 0; } return b; }
+function rotate(bits, r) { let b = bits; for (let i = 0; i < (r % 4); i++) { const nb = new Uint8Array(2 * N); for (let k = 0; k < N; k++) { nb[k] = 1 - b[N + k]; nb[N + k] = b[k]; } b = nb; } return b; }
+function rowBits(prn, fd, phaseIdx) {
+  const c = caCode(prn), re = new Float64Array(N), im = new Float64Array(N), off = 2 * Math.PI * (phaseIdx + 0.5) / 8;
+  for (let k = 0; k < N; k++) { const ph = 2 * Math.PI * fd * k / FS + off; re[k] = c[k] * Math.cos(ph); im[k] = c[k] * Math.sin(ph); }
+  return quantize(re, im);
+}
+function hd(a, b) { let d = 0; for (let i = 0; i < a.length; i++) d += a[i] !== b[i]; return d; }
+(function fig2() {
+  const st = { rot: 0, ph: 0, row: "true", seed: 5 };
+  const mk = (host, items, key) => { const el = $(host); items.forEach(([v, lab]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.dataset.v = v;
+    b.addEventListener("click", () => { st[key] = isNaN(+v) ? v : +v; sync(); go(); }); el.appendChild(b); }); };
+  mk("#f2-rot", [[0, "0°"], [1, "90°"], [2, "180°"], [3, "270°"]], "rot");
+  mk("#f2-ph", [[0, "22.5°"], [1, "67.5°"]], "ph");
+  mk("#f2-row", [["true", "PRN 7 (true)"], ["wrong", "PRN 12 (absent)"]], "row");
+  function sync() { for (const [host, key] of [["#f2-rot", "rot"], ["#f2-ph", "ph"], ["#f2-row", "row"]]) $(host).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v == st[key]))); }
+  let q, row, cur, best, mism;
+  function compute() {
+    const cn0 = +$("#f2-cn0").value, th = +$("#f2-th").value, df = +$("#f2-df").value;
+    $("#f2-cn0-o").textContent = cn0 >= 71 ? "noiseless" : cn0 + " dB-Hz"; $("#f2-th-o").textContent = th + "°"; $("#f2-df-o").textContent = df + " Hz";
+    const rec = received(7, 0, 1500 + df, th * Math.PI / 180, cn0 >= 71 ? 60 : cn0, 1, st.seed, cn0 < 71);
+    q = quantize(rec.re, rec.im);
+    const prn = st.row === "true" ? 7 : 12;
+    const rows = [rowBits(prn, 1500, 0), rowBits(prn, 1500, 1)];
+    row = rows[st.ph];
+    const qr = rotate(q, st.rot);
+    mism = new Uint8Array(2 * N); cur = 0; for (let i = 0; i < 2 * N; i++) { mism[i] = qr[i] !== row[i]; cur += mism[i]; }
+    best = Infinity; let arg = ""; for (let p = 0; p < 2; p++) for (let r = 0; r < 4; r++) { const d = hd(rotate(q, r), rows[p]); if (d < best) { best = d; arg = `${r * 90}° rotation, ${p ? 67.5 : 22.5}° stored`; } }
+    best = { d: best, arg };
+  }
+  function drawPlane(cv, off) {
+    const { g, w } = setupCanvas(cv); const cols = 33, rows = 31, cs = Math.min((w) / cols, 200 / rows), gap = cs > 5 ? 1 : 0.5;
+    const hit = css("--hit"), ok = css("--rule");
+    for (let i = 0; i < N; i++) { const x = (i % cols) * cs, y = Math.floor(i / cols) * cs; g.fillStyle = mism[off + i] ? hit : ok; g.fillRect(x, y, cs - gap, cs - gap); }
+  }
+  function drawMeter() {
+    const cv = $("#f2-m"), { g, w, h } = setupCanvas(cv); const L = 8, R = 8, pw = w - L - R, y0 = 30;
+    const X = v => L + pw * v / 2046;
+    g.fillStyle = css("--code-bg"); g.fillRect(L, y0 - 6, pw, 12);
+    g.fillStyle = css("--accent-soft"); g.fillRect(L, y0 - 6, X(256) - L, 12);
+    const marks = [[256, "12.5% silicon", css("--accent")], [944, "threshold 944", css("--ink-2")], [1023, "chance 1023", css("--muted")]];
+    font(g, 10.5); g.textAlign = "center";
+    marks.forEach(([v, lab, col], i) => { g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(v), y0 - 10); g.lineTo(X(v), y0 + 10); g.stroke(); g.fillStyle = col; g.fillText(lab, Math.min(Math.max(X(v), 40), w - 50) + (i === 1 ? -36 : i === 2 ? 30 : 0), y0 + 24); });
+    const dot = (v, col, lab, up) => { g.fillStyle = col; g.beginPath(); g.arc(X(v), y0, 6, 0, 7); g.fill(); g.strokeStyle = css("--surface"); g.lineWidth = 2; g.stroke(); g.fillStyle = css("--ink"); g.fillText(lab, Math.min(Math.max(X(v), 50), w - 50), up ? y0 - 14 : y0 - 14); };
+    dot(cur, css("--s2"), "", true); dot(best.d, css("--s1"), "", true);
+    g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("0", L, 10); g.textAlign = "right"; g.fillText("2046", w - R, 10);
+  }
+  function draw() {
+    drawPlane($("#f2-ci"), 0); drawPlane($("#f2-cq"), N); drawMeter();
+    const f = v => (100 * v / 2046).toFixed(1) + "%";
+    $("#f2-r").innerHTML = `<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:var(--s2)"></i> this combination: <b>${cur}</b> bits (${f(cur)}); s·b = ${2046 - 2 * cur}</span>` +
+      `<span><i style="display:inline-block;width:10px;height:10px;border-radius:5px;background:var(--s1)"></i> best of 8 (D<sub>true</sub> if this is the true row): <b>${best.d}</b> (${f(best.d)}) at ${best.arg}</span>` +
+      `<span>${best.d <= 944 ? '<span class="pill ok">inside threshold 944</span>' : '<span class="pill no">outside threshold 944</span>'}</span>`;
+  }
+  const go = () => { compute(); draw(); };
+  ["#f2-cn0", "#f2-th", "#f2-df"].forEach(id => $(id).addEventListener("input", go));
+  $("#f2-redraw").addEventListener("click", () => { st.seed++; go(); });
+  sync(); compute(); onRedraw(draw);
+})();
+const DATA = {"fam":[{"name":"baseline","rows":1344,"w":2046,"blind":false,"dw":[997.48,13.63],"bins":[[29.0,72,975.7,989.0,1.6,0.4834],[31.0,469,976.2,993.0,1.56,0.4853],[33.0,333,974.0,991.0,1.72,0.4844],[35.0,279,970.2,988.0,2.0,0.4829],[37.0,315,965.4,985.0,2.36,0.4814],[39.0,676,956.5,978.0,3.01,0.478],[41.0,513,950.0,976.0,3.48,0.477],[43.0,297,933.4,961.4000000000001,4.7,0.4699],[45.0,261,912.3,936.0,6.25,0.4575],[47.0,414,893.5,928.0,7.63,0.4536],[49.0,766,896.0,941.0,7.44,0.4599],[51.0,333,893.6,922.8,7.62,0.451],[53.0,279,858.6,888.0,10.19,0.434],[55.0,306,817.4,851.0,13.21,0.4159],[57.0,414,760.7,799.0,17.37,0.3905],[59.0,54,715.4,751.4,20.7,0.3673]],"cost":{"n_searches":36832,"bit_comparisons":101281517568,"energy_uj":19.24348833792,"latency_us":294.656},"cal":{"thr":944,"votes":4,"pfa":0.0071,"pfaU":0.0334,"pd":0.626,"pdb":0.273,"tol":0.4614,"thrs":[910,921,933,944,955,967,978,989],"chance":[1023.0,22.58]}},{"name":"code-only (quadrant)","rows":64,"w":2046,"blind":false,"dw":[997.48,13.63],"bins":[[29.0,72,982.8,998.0,1.07,0.4878],[31.0,469,980.4,997.2,1.25,0.4874],[33.0,333,980.1,996.0,1.27,0.4868],[35.0,279,977.3,995.0,1.48,0.4863],[37.0,315,972.1,991.0,1.86,0.4844],[39.0,676,964.1,988.0,2.45,0.4829],[41.0,513,956.5,983.0,3.01,0.4804],[43.0,297,942.7,971.4000000000001,4.02,0.4748],[45.0,261,923.0,950.0,5.47,0.4643],[47.0,414,905.5,939.0,6.75,0.4589],[49.0,766,906.5,952.0,6.67,0.4653],[51.0,333,903.6,936.0,6.89,0.4575],[53.0,279,871.0,903.2,9.28,0.4414],[55.0,306,836.2,871.5,11.83,0.426],[57.0,414,780.6,830.0,15.91,0.4057],[59.0,54,735.3,793.6,19.24,0.3879]],"cost":{"n_searches":773472,"bit_comparisons":101281517568,"energy_uj":19.24348833792,"latency_us":6187.776},"cal":{"thr":944,"votes":4,"pfa":0.0,"pfaU":0.0212,"pd":0.587,"pdb":0.164,"tol":0.4614,"thrs":[910,921,933,944,955,967,978,989],"chance":[1023.0,22.58]}},{"name":"code-only (exact)","rows":64,"w":2046,"blind":false,"dw":[997.49,13.63],"bins":[[49.0,235,917.7,946.0,5.85,0.4624],[51.0,216,890.9,925.0,7.82,0.4521],[53.0,207,854.8,892.0,10.47,0.436],[55.0,180,809.2,848.1,13.81,0.4145],[57.0,216,754.1,804.5,17.85,0.3932],[59.0,36,709.6,756.5,21.12,0.3697]],"cost":{"n_searches":773472,"bit_comparisons":101281517568,"energy_uj":19.24348833792,"latency_us":6187.776},"cal":null},{"name":"thermometer","rows":1344,"w":6138,"blind":false,"dw":[2336.49,23.69],"bins":[[29.0,72,2303.0,2332.8,1.41,0.3801],[31.0,469,2300.4,2332.0,1.52,0.3799],[33.0,333,2298.8,2334.0,1.59,0.3803],[35.0,279,2287.8,2319.2,2.05,0.3778],[37.0,315,2276.7,2316.0,2.53,0.3773],[39.0,676,2258.3,2299.0,3.3,0.3746],[41.0,513,2246.2,2293.0,3.81,0.3736],[43.0,297,2212.7,2260.4,5.23,0.3683],[45.0,261,2173.4,2215.0,6.88,0.3609],[47.0,414,2136.1,2201.0,8.46,0.3586],[49.0,766,2140.3,2222.5,8.28,0.3621],[51.0,333,2138.9,2195.0,8.34,0.3576],[53.0,279,2067.3,2117.2,11.36,0.3449],[55.0,306,1988.4,2051.5,14.69,0.3342],[57.0,414,1877.8,1946.0,19.36,0.317],[59.0,54,1787.7,1850.1,23.17,0.3014]],"cost":{"n_searches":36832,"bit_comparisons":303844552704,"energy_uj":57.730465013759996,"latency_us":294.656},"cal":{"thr":2264,"votes":6,"pfa":0.0071,"pfaU":0.0334,"pd":0.679,"pdb":0.498,"tol":0.3688,"thrs":[2188,2207,2226,2245,2264,2283,2302,2321],"chance":[2377.6,37.92]}},{"name":"segmented","rows":20160,"w":128,"blind":true,"dw":[57.64,3.44],"bins":[[29.0,80,47.6,50.0,2.93,0.3906],[31.0,520,47.8,50.0,2.88,0.3906],[33.0,370,47.4,50.0,2.97,0.3906],[35.0,310,47.6,50.0,2.93,0.3906],[37.0,350,47.4,50.0,2.97,0.3906],[39.0,750,47.6,50.0,2.92,0.3906],[41.0,570,46.9,50.0,3.13,0.3906],[43.0,330,46.3,49.0,3.3,0.3828],[45.0,290,45.6,49.0,3.5,0.3828],[47.0,460,44.7,48.0,3.76,0.375],[49.0,850,44.9,48.0,3.71,0.375],[51.0,370,44.7,48.0,3.77,0.375],[53.0,310,42.7,46.0,4.34,0.3594],[55.0,340,40.4,44.0,5.03,0.3438],[57.0,460,36.7,41.0,6.08,0.3203],[59.0,60,34.1,38.0,6.85,0.2969]],"cost":{"n_searches":40668,"bit_comparisons":104942960640,"energy_uj":19.939162521600004,"latency_us":325.344},"cal":{"thr":50,"votes":3,"pfa":0.0,"pfaU":0.0212,"pd":0.295,"pdb":0.0,"tol":0.3906,"thrs":[36,39,41,44,47,50,53,56],"chance":[64.0,5.66]}},{"name":"differential","rows":128,"w":2046,"blind":true,"dw":[1023.0,22.61],"bins":[[29.0,71,1006.0,1025.0,0.75,0.501],[31.0,462,1003.7,1026.0,0.85,0.5015],[33.0,326,1004.5,1026.0,0.82,0.5015],[35.0,277,1003.4,1025.0,0.87,0.501],[37.0,313,1001.8,1023.0,0.94,0.5],[39.0,669,1002.3,1024.0,0.92,0.5005],[41.0,505,1000.3,1021.6,1.0,0.4993],[43.0,292,1000.4,1022.0,1.0,0.4995],[45.0,259,997.0,1017.0,1.15,0.4971],[47.0,413,992.9,1015.0,1.33,0.4961],[49.0,756,991.6,1015.0,1.39,0.4961],[51.0,326,993.9,1016.0,1.29,0.4966],[53.0,277,987.2,1010.0,1.58,0.4936],[55.0,304,965.0,994.0,2.56,0.4858],[57.0,412,928.7,969.0,4.17,0.4736],[59.0,53,906.6,934.8,5.15,0.4569]],"cost":{"n_searches":9106,"bit_comparisons":2384752128,"energy_uj":0.45310290432,"latency_us":72.848},"cal":null}],"fft":{"ratio":2.0,"pfa":0.0071,"pfaU":0.0334,"pd":0.829,"pdb":0.985}};
+const FAMC = { "FFT reference": "--s1", "baseline": "--s2", "thermometer": "--s3", "code-only (quadrant)": "--s4", "code-only (exact)": "--s4", "segmented": "--s5", "differential": "--s6" };
+const fam = (n) => DATA.fam.find(f => f.name === n);
+function erfc(x) { const z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+  const a = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+  return x >= 0 ? a : 2 - a; }
+const Phi = (x) => 0.5 * erfc(-x / Math.SQRT2);
+function lnC(n, k) { let s = 0; for (let i = 1; i <= k; i++) s += Math.log(n - k + i) - Math.log(i); return s; }
+function tail(n, m, p) { if (p <= 0) return m <= 0 ? 1 : 0; if (p >= 1) return 1; let s = 0; for (let v = m; v <= n; v++) s += Math.exp(lnC(n, v) + v * Math.log(p) + (n - v) * Math.log1p(-p)); return Math.min(1, s); }
+const fmtP = (p) => p === 0 ? "0" : p < 1e-3 ? p.toExponential(1) : p.toFixed(3);
+function segButtons(host, items, cur, onPick) {
+  const el = $(host); el.innerHTML = "";
+  items.forEach(([v, lab]) => { const b = document.createElement("button"); b.type = "button"; b.textContent = lab; b.dataset.v = v; b.setAttribute("aria-pressed", String(v === cur()));
+    b.addEventListener("click", () => { onPick(v); el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.v === String(cur())))); }); el.appendChild(b); });
+}
+
+
+/* ---------- Figure 3: what one operation covers ---------- */
+(function fig3() {
+  let mode = "fft", k = 0, timer = 0;
+  const P = 32, D = 21;
+  function draw() {
+    const cv = $("#f3-c"), { g, w, h } = setupCanvas(cv);
+    const narrow = w < 560, gw = narrow ? w : Math.min(w * 0.42, 330), cs = Math.min((gw - 30) / P, (narrow ? 130 : 230) / D);
+    const gx = 26, gy = 22, sx = narrow ? 0 : gx + P * cs + 40, sy = narrow ? gy + D * cs + 44 : gy, sw = (narrow ? w : w - sx) - 6, sh = narrow ? 40 : D * cs;
+    font(g, 10.5); g.fillStyle = css("--ink-2"); g.textAlign = "left";
+    g.fillText("PRN 1–32 →", gx, gy - 8); g.save(); g.translate(12, gy + D * cs / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("Doppler bin", 0, 0); g.restore();
+    g.fillText("code phase 0–1022 →", sx, sy - 8);
+    const on = css(mode === "fft" ? "--s1" : "--s2"), off = css("--code-bg");
+    let cp = 0, rot = 0, cellP = 0, cellD = 0;
+    if (mode === "fft") { cellP = k % P; cellD = Math.floor(k / P) % D; } else { rot = k % 4; cp = Math.floor(k / 4) % 1023; }
+    for (let p = 0; p < P; p++) for (let d = 0; d < D; d++) {
+      const lit = mode === "cam" || (p === cellP && d === cellD), done = mode === "fft" && (d * P + p) < (k % (P * D));
+      g.fillStyle = lit ? on : done ? css("--accent-soft") : off; g.fillRect(gx + p * cs, gy + d * cs, cs - 1, cs - 1);
+    }
+    if (mode === "fft") { g.fillStyle = on; g.fillRect(sx, sy, sw, sh); }
+    else { g.fillStyle = off; g.fillRect(sx, sy, sw, sh); g.fillStyle = css("--accent-soft"); g.fillRect(sx, sy, sw * cp / 1023, sh); g.fillStyle = on; g.fillRect(sx + sw * cp / 1023, sy, Math.max(3, sw / 1023), sh); }
+    g.fillStyle = css("--ink"); g.textAlign = "left"; font(g, 11.5, 600);
+    const label = mode === "fft" ? `PRN ${cellP + 1}, ${-5000 + 500 * cellD} Hz: all 1023 code phases at once` : `all 1344 rows at once; code phase ${cp}, rotation ${rot * 90}°`;
+    g.fillText(label, narrow ? 0 : sx, narrow ? sy + sh + 18 : sy + sh + 20);
+    $("#f3-r").innerHTML = mode === "fft"
+      ? `<span>one operation: <b>FFT · conj(code FFT) · IFFT</b> on one code period</span><span>per acquisition: 32 × 21 × 10 = <b>6 720</b> transform pairs</span><span>arithmetic: full-precision complex</span>`
+      : `<span>one operation: <b>one CAM search</b>, 1 344 rows × 2 046 bits</span><span>per acquisition: 9 208 × 4 = <b>36 832</b> searches ≈ <b>19 µJ</b>, <b>295 µs</b></span><span>arithmetic: Hamming distance; ≈ 190× the FFT's bit operations</span>`;
+  }
+  function stop() { clearInterval(timer); timer = 0; $("#f3-play").textContent = "Play"; }
+  segButtons("#f3-mode", [["fft", "FFT reference"], ["cam", "HD-CAM baseline"]], () => mode, (m) => { mode = m; k = 0; draw(); });
+  $("#f3-step").addEventListener("click", () => { stop(); k++; draw(); });
+  $("#f3-play").addEventListener("click", () => { if (timer) return stop(); $("#f3-play").textContent = "Pause";
+    timer = setInterval(() => { k += mode === "fft" ? 1 : 4 * 7; draw(); }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 400 : 60); });
+  onRedraw(draw);
+})();
+
+/* ---------- Figure 4: decision model ---------- */
+(function fig4() {
+  const NAMES = [["baseline", "baseline"], ["thermometer", "thermometer"], ["code-only (quadrant)", "code-only"]];
+  const CAL = { "baseline": [944, 4], "thermometer": [2264, 6], "code-only (quadrant)": [944, 4] };
+  let cur = "baseline";
+  const thr = $("#f4-thr"), v = $("#f4-v"), L = $("#f4-L"), cb = $("#f4-cn0");
+  function setFamily(n) {
+    cur = n; const f = fam(n), [mu] = f.dw;
+    thr.min = Math.round(mu - 8 * f.dw[1]); thr.max = Math.round(mu + 1.5 * f.dw[1]);
+    thr.value = CAL[n][0]; v.value = CAL[n][1]; go();
+  }
+  function model() {
+    const f = fam(cur), b = f.bins[+cb.value], t = +thr.value, m = +v.value, n = +L.value;
+    const muT = b[2], sdT = Math.max(1, (b[3] - b[2]) / 1.2816), [muW, sdW] = f.dw;
+    const pT = Phi((t + 0.5 - muT) / sdT), pW = Phi((t + 0.5 - muW) / sdW);
+    const cells = f.rows * 1023 * (f.name.startsWith("code-only") ? 21 : 1) * 22 / 32;
+    const qW = tail(n, m, pW), pfa = -Math.expm1(cells * Math.log1p(-qW));
+    return { f, b, t, m, n, muT, sdT, muW, sdW, pT, pW, pd: tail(n, m, pT), pfa };
+  }
+  function draw() {
+    const M = model(), cv = $("#f4-c"), { g, w, h } = setupCanvas(cv);
+    const Lp = 12, R = 12, T = 14, B = 34, pw = w - Lp - R, ph = h - T - B;
+    const lo = M.muW - 10 * M.sdW, hi = M.muW + 4 * M.sdW, X = (x) => Lp + pw * (x - lo) / (hi - lo);
+    const pdf = (x, mu, sd) => Math.exp(-0.5 * ((x - mu) / sd) ** 2) / sd;
+    const peak = Math.max(pdf(M.muT, M.muT, M.sdT), pdf(M.muW, M.muW, M.sdW));
+    const Y = (y) => T + ph - ph * y / peak * 0.95;
+    g.strokeStyle = css("--rule"); g.beginPath(); g.moveTo(Lp, T + ph); g.lineTo(w - R, T + ph); g.stroke();
+    font(g, 10.5); g.fillStyle = css("--muted"); g.textAlign = "center";
+    const step = M.f.w > 3000 ? 50 : M.f.w > 500 ? 20 : 2;
+    for (let x = Math.ceil(lo / step) * step; x <= hi; x += step) g.fillText(x, X(x), h - 18);
+    g.fillText("Hamming distance (bits of " + M.f.w + ")", Lp + pw / 2, h - 3);
+    const curve = (mu, sd, col, fill, below) => {
+      g.beginPath(); g.moveTo(X(lo), Y(0));
+      for (let i = 0; i <= 300; i++) { const x = lo + (hi - lo) * i / 300; g.lineTo(X(x), Y(pdf(x, mu, sd))); }
+      g.lineTo(X(hi), Y(0)); g.closePath(); g.globalAlpha = 0.12; g.fillStyle = col; g.fill(); g.globalAlpha = 1;
+      g.save(); g.beginPath(); g.rect(X(lo), T, X(M.t + 0.5) - X(lo), ph); g.clip();
+      g.beginPath(); g.moveTo(X(lo), Y(0)); for (let i = 0; i <= 300; i++) { const x = lo + (hi - lo) * i / 300; g.lineTo(X(x), Y(pdf(x, mu, sd))); } g.lineTo(X(hi), Y(0)); g.closePath();
+      g.globalAlpha = 0.45; g.fillStyle = col; g.fill(); g.globalAlpha = 1; g.restore();
+      g.beginPath(); for (let i = 0; i <= 300; i++) { const x = lo + (hi - lo) * i / 300; const y = Y(pdf(x, mu, sd)); i ? g.lineTo(X(x), y) : g.moveTo(X(x), y); }
+      g.strokeStyle = col; g.lineWidth = 2; g.stroke();
+    };
+    curve(M.muW, M.sdW, css("--muted"));
+    curve(M.muT, M.sdT, css(FAMC[M.f.name]));
+    g.strokeStyle = css("--ink"); g.lineWidth = 1.5; g.setLineDash([4, 3]); g.beginPath(); g.moveTo(X(M.t + 0.5), T); g.lineTo(X(M.t + 0.5), T + ph); g.stroke(); g.setLineDash([]);
+    g.fillStyle = css("--ink"); g.textAlign = "left"; g.fillText("threshold " + M.t + " (" + (100 * M.t / M.f.w).toFixed(1) + "%)", X(M.t + 0.5) + 5, T + 10);
+    g.fillStyle = css("--ink-2"); g.textAlign = "center";
+    g.fillText("true row", X(M.muT), Y(pdf(M.muT, M.muT, M.sdT)) - 6); g.fillText("wrong rows", X(M.muW), Y(pdf(M.muW, M.muW, M.sdW)) - 6);
+    $("#f4-cn0-o").textContent = M.b[0] + " dB-Hz"; $("#f4-thr-o").textContent = M.t; $("#f4-v-o").textContent = M.m + " of " + M.n; $("#f4-L-o").textContent = M.n + (M.n === 9 ? " (10 ms)" : ` (${M.n + 1} ms)`);
+    const meas = DATA.fam.find(f => f.name === M.f.name).cal;
+    $("#f4-r").innerHTML = `<span>d′ here <b>${((M.muW - M.muT) / M.sdW).toFixed(2)}</b></span><span>p_true per look <b>${M.pT.toFixed(3)}</b></span><span>p_wrong per look <b>${fmtP(M.pW)}</b></span>` +
+      `<span>model P<sub>d</sub> <b>${M.pd.toFixed(3)}</b></span><span>model P<sub>fa,acq</sub> <b>${fmtP(M.pfa)}</b> ${M.pfa <= 0.01 ? '<span class="pill ok">≤ 1e-2</span>' : '<span class="pill no">&gt; 1e-2</span>'}</span>` +
+      (meas ? `<span>measured at thr ${meas.thr}, ${meas.votes} votes: P<sub>d</sub> 38–42 dB-Hz <b>${meas.pdb}</b>, P<sub>fa,acq</sub> <b>${meas.pfa}</b></span>` : "");
+  }
+  const go = () => draw();
+  segButtons("#f4-fam", NAMES, () => cur, setFamily);
+  [thr, v, L, cb].forEach(el => el.addEventListener("input", () => { if (+v.value > +L.value) v.value = L.value; go(); }));
+  $("#f4-match").addEventListener("click", () => {
+    const f = fam(cur); let best = +thr.min;
+    for (let t = +thr.max; t >= +thr.min; t--) { thr.value = t; const M = model(); if (M.pfa <= 0.01) { best = t; break; } }
+    thr.value = best; go();
+  });
+  $("#f4-cal").addEventListener("click", () => { L.value = 9; setFamily(cur); });
+  v.max = 49; setFamily("baseline"); onRedraw(draw);
+})();
+
+/* ---------- Figure 5: family layouts ---------- */
+(function fig5() {
+  const F = [
+    { k: "baseline", row: [["I signs", 1023], ["Q signs", 1023]], rowWhat: "one code period of PRN × Doppler bin × stored phase (32 × 21 × 2)", q: "one 1023-sample window per start sample, 4 rotations", n: 9208, var: 4, blind: false },
+    { k: "code-only (quadrant)", row: [["I signs", 1023], ["Q signs", 1023]], rowWhat: "one code period of PRN × stored phase, no carrier (32 × 2)", q: "each window wiped at 21 Doppler bins by a 2-bit quadrant ramp, 4 rotations", n: 9208 * 21, var: 4, blind: false },
+    { k: "thermometer", row: [["I levels, 3 bits each", 3069], ["Q levels, 3 bits each", 3069]], rowWhat: "PRN × Doppler × stored phase, each sample at 4 levels in unary", q: "window quantised to 4 levels with the record's own gain, 4 rotations", n: 9208, var: 4, blind: false },
+    { k: "segmented", row: [["I signs", 64], ["Q signs", 64]], rowWhat: "one 64-sample segment of PRN × Doppler × stored phase; 15 segments form one hypothesis", q: "one 64-sample window per start sample, 4 rotations", n: 10167, var: 4, blind: true },
+    { k: "differential", row: [["sign Re x[n]x*[n−102]", 1023], ["sign Im", 1023]], rowWhat: "delay-multiplied code of PRN × one of 4 Doppler classes", q: "delay-multiplied window, 1 variant (the carrier cancels)", n: 9106, var: 1, blind: true },
+  ];
+  let cur = "baseline";
+  function draw() {
+    const f = F.find(x => x.k === cur), d = fam(cur), c = d.cost, maxW = 6138;
+    const seg = f.row.map(([lab, bits], i) => `<div title="${lab}: ${bits} bits" style="flex:${bits} 0 0;min-width:0;background:${i ? "color-mix(in srgb, var(" + FAMC[cur] + ") 55%, var(--surface))" : "var(" + FAMC[cur] + ")"};color:var(--ink);font:500 11px var(--f-mono);padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.w >= 1000 ? lab : ""}</div>`).join("");
+    const rows = DATA.fam.filter(x => x.name !== "code-only (exact)");
+    const bar = (val, max, log, col) => { const fr = log ? Math.log10(val) / Math.log10(max) : val / max; return `<div style="height:10px;border-radius:0 4px 4px 0;background:var(${col});width:${Math.max(2, 100 * fr).toFixed(1)}%"></div>`; };
+    const mx = { bits: Math.max(...rows.map(r => r.rows * r.w)), s: Math.max(...rows.map(r => r.cost.n_searches)), e: Math.max(...rows.map(r => r.cost.energy_uj)), l: Math.max(...rows.map(r => r.cost.latency_us)) };
+    $("#f5-body").innerHTML = `
+      <div class="pl-h" style="font-family:var(--f-display);font-size:12.5px;color:var(--ink-2)">One row: ${d.w.toLocaleString()} bits ${f.blind ? '<span class="pill no">Doppler-blind</span>' : ""}</div>
+      <div style="display:flex;width:${Math.max(3, 100 * d.w / maxW)}%;border-radius:4px;overflow:hidden;margin:4px 0 10px;height:24px">${seg}</div>
+      <div class="grid2" style="font-size:14.5px">
+        <div><b>Rows</b>: ${d.rows.toLocaleString()} — ${f.rowWhat}</div>
+        <div><b>Queries</b>: ${(f.n).toLocaleString()} — ${f.q}</div>
+      </div>
+      <div class="tbl"><table style="min-width:600px">
+        <thead><tr><th>Family</th><th>Array</th><th style="width:22%">Total bits</th><th style="width:22%">Searches (log)</th><th style="width:22%">Energy per acquisition</th></tr></thead>
+        <tbody>${rows.map(r => `<tr style="${r.name === cur ? "background:var(--accent-soft)" : ""}"><td>${r.name.replace(" (quadrant)", "")}</td><td class="mono">${r.rows.toLocaleString()} × ${r.w.toLocaleString()}</td>
+          <td><span class="mono">${(r.rows * r.w / 1e6).toFixed(2)} Mbit</span>${bar(r.rows * r.w, mx.bits, false, FAMC[r.name])}</td>
+          <td><span class="mono">${r.cost.n_searches.toLocaleString()} · ${r.cost.latency_us >= 1000 ? (r.cost.latency_us / 1000).toFixed(1) + " ms" : r.cost.latency_us.toFixed(0) + " µs"}</span>${bar(r.cost.n_searches, mx.s, true, FAMC[r.name])}</td>
+          <td><span class="mono">${r.cost.energy_uj.toFixed(r.cost.energy_uj < 1 ? 2 : 1)} µJ</span>${bar(r.cost.energy_uj, mx.e, false, FAMC[r.name])}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  segButtons("#f5-fam", F.map(f => [f.k, f.k.replace(" (quadrant)", "")]), () => cur, (k) => { cur = k; draw(); });
+  onRedraw(draw);
+})();
+
+/* ---------- Figure 6: tolerance and d' ---------- */
+(function fig6() {
+  let mode = "tol", hoverX = null;
+  const series = DATA.fam;
+  segButtons("#f6-m", [["tol", "Tolerance fraction"], ["dp", "d′"]], () => mode, (m) => { mode = m; draw(); });
+  $("#f6-leg").innerHTML = series.map(f => `<span><i style="background:var(${FAMC[f.name]});${f.name.includes("exact") ? "opacity:.5" : ""}"></i>${f.name}</span>`).join("");
+  const cv = $("#f6-c"); let geom = null;
+  function draw() {
+    const { g, w, h } = setupCanvas(cv), L = 46, R = 14, T = 12, B = 34, pw = w - L - R, ph = h - T - B;
+    const x0 = 28, x1 = 60, X = (x) => L + pw * (x - x0) / (x1 - x0);
+    const yMax = mode === "tol" ? 0.55 : Math.ceil(Math.max(...series.flatMap(f => f.bins.map(b => b[4]))) / 5) * 5;
+    const Y = (y) => T + ph - ph * y / yMax; geom = { X, L, pw, x0, x1 };
+    font(g, 10.5); g.strokeStyle = css("--rule"); g.fillStyle = css("--muted"); g.textAlign = "right";
+    const ticks = mode === "tol" ? [0, 0.1, 0.2, 0.3, 0.4, 0.5] : Array.from({ length: yMax / 5 + 1 }, (_, i) => i * 5);
+    ticks.forEach(t => { g.beginPath(); g.moveTo(L, Y(t)); g.lineTo(w - R, Y(t)); g.stroke(); g.fillText(mode === "tol" ? (t * 100) + "%" : t, L - 6, Y(t) + 3); });
+    g.textAlign = "center"; for (let x = 30; x <= 60; x += 5) g.fillText(x, X(x), h - 18);
+    g.fillText("per-satellite C/N₀ (dB-Hz)", L + pw / 2, h - 3);
+    if (mode === "tol") {
+      g.fillStyle = css("--accent-soft"); g.fillRect(L, Y(0.125), pw, Y(0) - Y(0.125));
+      g.fillStyle = css("--accent"); g.textAlign = "left"; g.fillText("silicon: 12.5%", L + 6, Y(0.125) + 13);
+      g.setLineDash([4, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(L, Y(0.5)); g.lineTo(w - R, Y(0.5)); g.stroke(); g.setLineDash([]);
+      g.fillStyle = css("--muted"); g.fillText("chance: 50%", L + 6, Y(0.5) - 5);
+    } else {
+      g.setLineDash([4, 3]); g.strokeStyle = css("--hit"); g.beginPath(); g.moveTo(L, Y(1)); g.lineTo(w - R, Y(1)); g.stroke(); g.setLineDash([]);
+      g.fillStyle = css("--hit"); g.textAlign = "left"; g.fillText("d′ = 1 (kill rule i)", L + 6, Y(1) - 5);
+    }
+    g.fillStyle = css("--code-bg"); g.globalAlpha = 0.6; g.fillRect(X(38), T, X(42) - X(38), ph); g.globalAlpha = 1;
+    g.fillStyle = css("--ink-2"); g.textAlign = "center"; g.fillText("38–42 band", X(40), T + 10);
+    series.forEach(f => {
+      const col = css(FAMC[f.name]), idx = mode === "tol" ? 5 : 4;
+      g.strokeStyle = col; g.lineWidth = 2; g.setLineDash(f.name.includes("exact") ? [5, 4] : []); g.beginPath();
+      f.bins.forEach((b, i) => { i ? g.lineTo(X(b[0]), Y(b[idx])) : g.moveTo(X(b[0]), Y(b[idx])); }); g.stroke(); g.setLineDash([]);
+      f.bins.forEach(b => { g.beginPath(); g.arc(X(b[0]), Y(b[idx]), 3.5, 0, 7); g.fillStyle = col; g.fill(); g.strokeStyle = css("--surface"); g.lineWidth = 1.5; g.stroke(); });
+    });
+    if (hoverX != null) { g.strokeStyle = css("--ink-2"); g.lineWidth = 1; g.beginPath(); g.moveTo(X(hoverX), T); g.lineTo(X(hoverX), T + ph); g.stroke(); }
+  }
+  cv.addEventListener("mousemove", (e) => {
+    if (!geom) return; const r = cv.getBoundingClientRect(), x = geom.x0 + (e.clientX - r.left - geom.L) / geom.pw * (geom.x1 - geom.x0);
+    const bx = Math.min(59, Math.max(29, Math.round((x - 29) / 2) * 2 + 29)); hoverX = bx; draw();
+    const parts = series.map(f => { const b = f.bins.find(b => b[0] === bx); return b ? `<span><i style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(${FAMC[f.name]})"></i> ${f.name}: <b>${mode === "tol" ? (b[5] * 100).toFixed(1) + "%" : b[4].toFixed(2)}</b></span>` : ""; });
+    $("#f6-r").innerHTML = `<span><b>${bx - 1}–${bx + 1} dB-Hz</b></span>` + parts.join("");
+  });
+  cv.addEventListener("mouseleave", () => { hoverX = null; draw(); });
+  onRedraw(draw);
+})();
+
+/* ---------- Figure 7: phase 3 detection ---------- */
+(function fig7() {
+  let mode = "band";
+  const rows = [["FFT reference", DATA.fft], ...["thermometer", "baseline", "code-only (quadrant)", "segmented"].map(n => [n, fam(n).cal])];
+  function draw() {
+    const key = mode === "band" ? "pdb" : "pd";
+    $("#f7-body").innerHTML = `<div style="position:relative;display:grid;gap:8px;margin:8px 0">` + rows.map(([n, c]) => `
+      <div style="display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 52px;gap:10px;align-items:center;font-size:14px">
+        <div style="font-family:var(--f-display)">${n.replace(" (quadrant)", "")}</div>
+        <div style="position:relative;height:18px;background:var(--code-bg);border-radius:4px">
+          <div style="position:absolute;inset:0 auto 0 0;width:${(100 * c[key]).toFixed(1)}%;background:var(${FAMC[n]});border-radius:0 4px 4px 0"></div>
+          <div style="position:absolute;top:-3px;bottom:-3px;left:90%;border-left:2px dashed var(--ink)"></div>
+        </div>
+        <div class="mono" style="text-align:right">${c[key].toFixed(3)}</div>
+      </div>`).join("") + `<div style="font:12px var(--f-display);color:var(--ink-2);display:grid;grid-template-columns:minmax(90px,170px) minmax(0,1fr) 52px;gap:10px"><span></span><span style="text-align:right;padding-right:10%">target 0.9 ┘</span><span></span></div></div>`;
+  }
+  segButtons("#f7-m", [["band", "P_d in 38–42 dB-Hz"], ["pool", "P_d pooled, all C/N₀"]], () => mode, (m) => { mode = m; draw(); });
+  onRedraw(draw);
+})();
+
+/* ---------- quizzes ---------- */
+const QUIZ = {
+  q1: [
+    { q: "Which axis of the search does one HD-CAM search make parallel?", o: ["PRN and Doppler bin together", "Code phase across all samples", "Carrier phase across all rotations"], a: 0, why: "Every row holds one (PRN, Doppler, stored phase), and one search compares all rows. Code phase is the serial loop." },
+    { q: "Why can a shorter CAM word not rescue the approach?", o: ["Shorter rows lose the Gold code", "SNR sets the tolerance fraction", "Silicon cannot store short rows"], a: 1, why: "Per-sample SNR sets the fraction of bits that flip. A 64-bit word would need about 27 bits of tolerance, still far above 8." },
+    { q: "Kill rule (ii) asks for what?", o: ["d′ above one at 45 dB-Hz", "P_d ≥ 0.9 at 40 dB-Hz, P_fa held", "Sensitivity within 3 dB of baseline"], a: 1, why: "Rule (ii) is the calibrated detection test on set A at the target false-alarm rate." },
+  ],
+  q2: [
+    { q: "At 1.023 MHz and 40 dB-Hz, what is the per-sample SNR?", o: ["About +10 dB", "About −20 dB", "About −40 dB"], a: 1, why: "C/N₀ / f_s = 10⁴ / 1.023·10⁶ ≈ −20.1 dB. Correlating 1023 samples gains 30 dB." },
+    { q: "With T = 1 ms, which Doppler error nulls the coherent peak?", o: ["250 Hz", "500 Hz", "1000 Hz"], a: 2, why: "The amplitude falls as |sinc(Δf·T)|, which is zero at Δf = 1/T = 1 kHz. A 500 Hz grid keeps the worst error at 250 Hz." },
+    { q: "How many cells does the study's search space hold?", o: ["32 × 21 × 1023 cells", "32 × 21 × 10 230 cells", "32 × 1023 × 8 cells"], a: 0, why: "32 PRNs × 21 Doppler bins × 1023 code phases = 687 456 cells." },
+  ],
+  q3: [
+    { q: "On ±1 words of n bits, Hamming distance equals what?", o: ["(n + s·b) / 2", "(n − s·b) / 2", "n − 2·(s·b)"], a: 1, why: "Each agreement adds +1 to s·b and each disagreement −1, so s·b = n − 2·hd." },
+    { q: "How does a 1-bit query turn by a quarter turn?", o: ["Swap planes, complement one", "Invert every bit of the word", "Shift the word by one sample"], a: 0, why: "Multiplying by j maps (I, Q) to (−Q, I): swap the two planes and complement the new I plane." },
+    { q: "Why are stored phases at 22.5° and 67.5°, not 0°?", o: ["They reduce the row count", "A 0° row has an empty Q plane", "They cancel the Doppler error"], a: 1, why: "At zero phase and zero Doppler the replica is real, so its Q plane is all sign(0): it carries nothing and matches anything." },
+  ],
+  q4: [
+    { q: "How many searches does one baseline acquisition issue?", o: ["9 208 searches", "36 832 searches", "687 456 searches"], a: 1, why: "9 208 window starts × 4 rotations. Bisection adds about 11 more per survivor." },
+    { q: "What does tightest_match do?", o: ["Bisects the CAM threshold", "Votes across code periods", "Rotates the query four times"], a: 0, why: "The CAM only answers membership, so the distance of a survivor is found by bisecting the threshold, about 11 searches." },
+    { q: "Why does the table path exist?", o: ["Hardware cannot run the CAM path", "To replay many settings cheaply", "It gives a different decision"], a: 1, why: "A GEMM computes every distance at once. Both paths give identical results; the table makes calibration over a grid affordable." },
+  ],
+  q5: [
+    { q: "Moving Doppler from row to query changes what?", o: ["Area falls, latency rises", "Energy falls, area rises", "Tolerance falls, area falls"], a: 0, why: "Code-only has 21× fewer rows and 21× more searches. Bit comparisons, and so energy, stay the same." },
+    { q: "Why is the segmented family Doppler-blind?", o: ["It drops the last 63 samples", "62 µs resolves only 16 kHz", "It uses a 4-level quantiser"], a: 1, why: "A 64-sample window resolves 1/T ≈ 16 kHz, so the whole ±5 kHz search falls inside one resolution cell." },
+    { q: "What makes the thermometer's distance an L1 distance?", o: ["Unary code per sample level", "Four rotations of each query", "Doppler moved into the query"], a: 0, why: "Level L is written as L ones; the Hamming distance between two such words is |L₁ − L₂|." },
+  ],
+  q6: [
+    { q: "A report at the right PRN but wrong Doppler counts as what?", o: ["A detection, then refined", "A miss and a false alarm", "Nothing; it is ignored"], a: 1, why: "§4.1: a wrong fix is worse than none, so it counts on both sides." },
+    { q: "Why does phase 3 gate on the measured P_fa, not the bound?", o: ["The bound is always lower", "Zero events gives 3/n always", "The FFT has no bound at all"], a: 1, why: "With zero events in 140 records the 95% bound is 2.1e-2 for every setting, so it measures the run length, not the design." },
+    { q: "Why is C/N₀ measured per satellite?", o: ["One sky spreads over ~8 dB", "The simulator ignores C/N₀", "To speed up the calibration"], a: 0, why: "Path loss and the antenna pattern spread satellites in one record over about 8 dB, so the record average describes none of them." },
+  ],
+  q7: [
+    { q: "What tolerance did phase 1 find the families need?", o: ["About 12% to 20% of the word", "About 36% to 50% of the word", "About 55% to 60% of the word"], a: 1, why: "Every arrangement needs 36–50%; the thermometer is lowest at 36.1%." },
+    { q: "What is the best CAM P_d in the 38–42 dB-Hz band?", o: ["0.498, the thermometer", "0.273, the baseline", "0.985, the code-only"], a: 0, why: "The thermometer reaches 0.498. 0.985 is the FFT reference." },
+    { q: "Which phase 1 number transferred to phase 3's ranking?", o: ["The tolerance fraction", "The separation d′", "The total bit count"], a: 1, why: "Segmented ranked second on tolerance and last on detection. d′ predicted the order." },
+  ],
+  q8: [
+    { q: "Which claim about the silicon is not yet confirmed?", o: ["Built in 65 nm CMOS", "Tolerance of 8 of 64 bits", "Runs at about 125 MHz"], a: 1, why: "65 nm, 125 MHz and ~0.2 fJ/bit appear in the abstract; 12.5% tolerance needs the full text." },
+    { q: "What is the honest novelty claim?", o: ["In-memory GPS acquisition", "Hamming-tolerant CAM lookup", "1-bit GPS acquisition"], a: 1, why: "In-memory (RRAM crossbar) and analog (CCSA) acquisition already exist; 1-bit acquisition is old." },
+    { q: "What does the 67 mW u-blox figure measure?", o: ["The acquisition engine alone", "The whole receiver, continuous", "One tracking channel only"], a: 1, why: "It is the u-blox 6 continuous-mode receiver power, not an acquisition-engine figure." },
+  ],
+  q9: [
+    { q: "Which lever has neither phase pulled?", o: ["A wider Doppler grid", "A longer dwell time", "More stored phases"], a: 1, why: "HANDOFF.md: the records are 10 ms with 9 looks; a longer dwell buys d′." },
+    { q: "Why must set B stay untouched until phase 4?", o: ["It holds the strong skies", "It keeps the evaluation honest", "It is too slow to build"], a: 1, why: "Settings were chosen on set A; scoring them on set B is the out-of-sample comparison." },
+    { q: "What must phase 4 rebuild that FrozenSetting omits?", o: ["The threshold and votes", "min_segments, mixer, refiner", "The C/N₀ of each record"], a: 1, why: "FrozenSetting stores threshold, votes and ratio only; the segmented family was calibrated at min_segments = 5." },
+  ],
+  q10: [
+    { q: "Which method does a classifier subclass override?", o: ["acquire", "_acquire", "decide"], a: 1, why: "acquire() checks the sample count and calls _acquire(). Subclasses override _acquire only." },
+    { q: "Which file holds the one decision rule?", o: ["hdcam_acq.py", "cam_acq.py", "calibrate.py"], a: 1, why: "CamAcqClassifier in cam_acq.py; every family supplies hooks only." },
+    { q: "A green test run without the submodule proves what?", o: ["The simulator path works", "Only the non-simulator paths", "Nothing about any path"], a: 1, why: "Simulator tests are guarded by sources_checked_out() and skip silently." },
+  ],
+};
+document.querySelectorAll("[data-quiz]").forEach(host => {
+  const raw = QUIZ[host.dataset.quiz]; if (!raw) return;
+  const r = rng(host.dataset.quiz.length * 7919 + host.dataset.quiz.charCodeAt(1));
+  const qs = raw.map(q => { const idx = q.o.map((_, j) => j); for (let k = idx.length - 1; k > 0; k--) { const m = Math.floor(r() * (k + 1)); [idx[k], idx[m]] = [idx[m], idx[k]]; }
+    return { ...q, o: idx.map(j => q.o[j]), a: idx.indexOf(q.a) }; });
+  host.innerHTML = `<h4>Check yourself</h4>` + qs.map((q, i) => `<div class="q"><p>${i + 1}. ${q.q}</p><div class="opts">${q.o.map((o, j) => `<button type="button" data-j="${j}">${o}</button>`).join("")}</div><div class="why" hidden></div></div>`).join("") + `<p class="ask">Stuck on one? Ask Claude to explain it another way.</p>`;
+  host.querySelectorAll(".q").forEach((el, i) => el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    const q = qs[i], right = +b.dataset.j === q.a;
+    el.querySelectorAll("button").forEach(x => x.classList.remove("right", "wrong"));
+    b.classList.add(right ? "right" : "wrong"); if (!right) el.querySelectorAll("button")[q.a].classList.add("right");
+    const w = el.querySelector(".why"); w.hidden = false; w.textContent = (right ? "Right. " : "Not quite. ") + q.why;
+  })));
+});
+
+/* ---------- chapter rail ---------- */
+(function toc() {
+  const ol = $("#toc"), secs = [...document.querySelectorAll("main section")];
+  secs.forEach((s, i) => { const h = s.querySelector("h2"), lab = h.childNodes[h.childNodes.length - 1].textContent.trim();
+    const li = document.createElement("li"); li.innerHTML = `<a href="#${s.id}"><span class="num">${s.id === "glossary" ? "·" : i + 1}</span>${lab}</a>`; ol.appendChild(li); });
+  const links = [...ol.querySelectorAll("a")];
+  const io = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) links.forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#" + e.target.id)); }), { rootMargin: "-20% 0px -70% 0px" });
+  secs.forEach(s => io.observe(s));
+})();
+</script>

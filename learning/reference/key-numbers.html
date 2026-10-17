@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HD-CAM GPS Key Numbers</title>
+<style>
+:root { --bg:#fff; --ink:#12161a; --ink-2:#4a525a; --rule:#dde1e5; --accent:#0d6d86; }
+@media (prefers-color-scheme: dark) { :root { --bg:#111416; --ink:#e9ecee; --ink-2:#b4bcc3; --rule:#2b3237; --accent:#4fb3cc; color-scheme: dark; } }
+body { background:var(--bg); color:var(--ink); font:14px/1.45 Georgia, "Times New Roman", serif; max-width:900px; margin:0 auto; padding:24px 16px; }
+h1 { font:700 22px Arial, sans-serif; margin:0 0 4px; } h2 { font:600 15px Arial, sans-serif; color:var(--accent); margin:20px 0 6px; text-transform:uppercase; letter-spacing:.06em; }
+table { border-collapse:collapse; width:100%; } td, th { border-bottom:1px solid var(--rule); padding:4px 8px; text-align:left; vertical-align:top; }
+th { font:600 12px Arial, sans-serif; color:var(--ink-2); } td.n { text-align:right; font-variant-numeric:tabular-nums; }
+code { font:12.5px ui-monospace, Menlo, monospace; }
+.cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:0 28px; }
+</style></head><body>
+<h1>HD-CAM GPS study: key numbers</h1>
+<p>Quick reference for the study on <code>cam-algorithm-exploration</code> at the end of phase 3. Full explanations: <code>learning/explainer/index.html</code>.</p>
+<div class="cols">
+<div>
+<h2>Geometry</h2>
+<table>
+<tr><td>Sampling rate</td><td class="n">1.023 MHz (1 sample = 1 chip)</td></tr>
+<tr><td>Samples per code period</td><td class="n">1023</td></tr>
+<tr><td>Record</td><td class="n">10 ms = 10 230 samples</td></tr>
+<tr><td>PRNs × Doppler bins</td><td class="n">32 × 21 (±5 kHz, 500 Hz)</td></tr>
+<tr><td>Search cells</td><td class="n">687 456</td></tr>
+<tr><td>Baseline codebook</td><td class="n">1 344 rows × 2 046 bits</td></tr>
+<tr><td>Window starts × rotations</td><td class="n">9 208 × 4 = 36 832</td></tr>
+<tr><td>Looks per code phase</td><td class="n">9</td></tr>
+<tr><td>Phase hypotheses</td><td class="n">4 rotations × 2 stored (22.5°, 67.5°)</td></tr>
+</table>
+<h2>Identities</h2>
+<table>
+<tr><td>Hamming ↔ correlation</td><td><code>hd = (n − s·b)/2</code></td></tr>
+<tr><td>Amplitude for C/N₀</td><td><code>a = √(C/N₀ / f_s)</code>, unit-power noise</td></tr>
+<tr><td>Per-sample SNR at 40 dB-Hz</td><td>−20.1 dB</td></tr>
+<tr><td>Quarter turn on bits</td><td><code>(I, Q) → (¬Q, I)</code></td></tr>
+<tr><td>Coherent Doppler loss</td><td><code>|sinc(Δf·T)|</code>, null at 1 kHz for T = 1 ms</td></tr>
+<tr><td>1-bit / 2-bit loss</td><td>1.96 dB / 0.55 dB</td></tr>
+<tr><td>d′</td><td><code>(mean D_wrong − mean D_true) / sd D_wrong</code></td></tr>
+<tr><td>Tolerance</td><td><code>p90(D_true) / word width</code></td></tr>
+</table>
+</div>
+<div>
+<h2>Silicon reference (JSSC 2025, 65 nm)</h2>
+<table>
+<tr><td>Tolerance</td><td class="n">1–8 of 64 bits = 12.5% (check full text)</td></tr>
+<tr><td>Energy</td><td class="n">0.19 fJ/bit/search (abstract: ~0.2)</td></tr>
+<tr><td>Search time</td><td class="n">8 ns at 125 MHz</td></tr>
+<tr><td>Baseline acquisition</td><td class="n">≈ 19 µJ, ≈ 295 µs</td></tr>
+</table>
+<h2>Phase 1: tolerance at 45 dB-Hz</h2>
+<table>
+<tr><th>Family</th><th class="n">d′</th><th class="n">Tolerance</th></tr>
+<tr><td>baseline</td><td class="n">6.25</td><td class="n">45.7%</td></tr>
+<tr><td>thermometer</td><td class="n">6.88</td><td class="n">36.1%</td></tr>
+<tr><td>code-only</td><td class="n">5.47</td><td class="n">46.4%</td></tr>
+<tr><td>segmented</td><td class="n">3.50</td><td class="n">38.3% (lower bound)</td></tr>
+<tr><td>differential</td><td class="n">1.15</td><td class="n">49.7% (dead)</td></tr>
+</table>
+<h2>Phase 3: P<sub>d</sub> in 38–42 dB-Hz at P<sub>fa,acq</sub> ≤ 1e-2</h2>
+<table>
+<tr><td>FFT reference (ratio 2.0)</td><td class="n">0.985</td></tr>
+<tr><td>thermometer (2264/6138, 6 votes)</td><td class="n">0.498</td></tr>
+<tr><td>baseline (944/2046, 4 votes)</td><td class="n">0.273</td></tr>
+<tr><td>code-only (944/2046, 4 votes)</td><td class="n">0.164</td></tr>
+<tr><td>segmented (50/128, 3 votes, 5 of 15)</td><td class="n">0.000</td></tr>
+</table>
+<h2>Kill rules</h2>
+<table>
+<tr><td>(i)</td><td>d′(45) &lt; 1 or &lt; ½ baseline's: kills differential</td></tr>
+<tr><td>(ii)</td><td>No P<sub>d</sub> ≥ 0.9 at 40 dB-Hz at target P<sub>fa</sub>: kills all CAM families</td></tr>
+<tr><td>(iii)</td><td>Set-B sensitivity &gt; 3 dB worse than baseline, no cost win: phase 4</td></tr>
+</table>
+</div>
+</div>
+</body></html>
