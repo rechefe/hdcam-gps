@@ -156,3 +156,17 @@ frequency resolution is 1/T = 16 kHz, so the whole ±5 kHz search sits in one ce
 delay-multiply turns a Doppler into one constant phase that 1 bit resolves into four
 classes. **Wrap them in `refine.RefinedClassifier` before scoring them**, or §4.1 counts
 every detection as a wrong fix, which is a miss and a false alarm at once.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues for `rechefe/hdcam-gps`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels, each named after its role. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
