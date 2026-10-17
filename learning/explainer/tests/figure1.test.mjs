@@ -23,8 +23,8 @@ let browser;
 before(async () => { browser = await chromium.launch(); });
 after(async () => { await browser.close(); });
 
-async function open(width) {
-  const p = await browser.newPage({ viewport: { width, height: 900 } });
+async function open(width, deviceScaleFactor = 1) {
+  const p = await browser.newPage({ viewport: { width, height: 900 }, deviceScaleFactor });
   const errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
   p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
@@ -54,6 +54,19 @@ test("the figure does not move or resize when any control changes", async () => 
     for (let n = 1; n <= 10; n++) { await set(p, "#f1-nc", n); seen.push(["nc=" + n, await boxes(p)]); }
     for (const c of [30, 37, 45]) { await set(p, "#f1-cn0", c); seen.push(["cn0=" + c, await boxes(p)]); }
     for (const [what, got] of seen) assert.equal(got, ref, `width ${width}, ${what}`);
+    await p.close();
+  }
+});
+
+test("on a high-density screen every canvas in the page keeps its height through repeated redraws", async () => {
+  for (const dpr of [2, 3]) {
+    const { p } = await open(1000, dpr);
+    const heights = () => p.evaluate(() => [...document.querySelectorAll("canvas")].map((c) => c.id + ":" + Math.round(c.getBoundingClientRect().height)).join(" "));
+    const ref = await heights();
+    for (let n = 1; n <= 10; n++) await set(p, "#f1-nc", n);
+    for (let b = 0; b <= 20; b += 4) await set(p, "#f1-dop", b);
+    await set(p, "#f2-cn0", 40); await set(p, "#f4-thr", 950); await p.setViewportSize({ width: 900, height: 900 }); await settle(p);
+    assert.equal(await heights(), ref, `dpr ${dpr}`);
     await p.close();
   }
 });

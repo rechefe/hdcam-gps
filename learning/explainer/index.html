@@ -768,10 +768,13 @@ new MutationObserver(redrawAll).observe(document.documentElement, { attributes: 
 function setupCanvas(cv) {
   const dpr = window.devicePixelRatio || 1;
   const w = cv.clientWidth || cv.parentElement.clientWidth;
-  const h = +cv.getAttribute("height");
+  /* The height attribute is the CSS height. Writing cv.height rewrites that attribute
+     in device pixels, so read it once and keep it, or every redraw multiplies it by dpr. */
+  if (!cv.dataset.cssHeight) cv.dataset.cssHeight = cv.getAttribute("height");
+  const h = +cv.dataset.cssHeight;
   cv.style.height = h + "px";
-  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr) || !cv._h) {
-    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv._h = h;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   }
   const g = cv.getContext("2d");
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
