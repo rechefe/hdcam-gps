@@ -123,6 +123,16 @@ canvas { display: block; width: 100%; max-width: 100%; }
 .eq { overflow-x: auto; margin: 14px 0; font-size: 17px; }
 mjx-container[display="true"] { margin: 10px 0 !important; overflow-x: auto; overflow-y: hidden; }
 mjx-container svg { max-width: 100%; }
+.ctrls.fixed { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); align-items: end; }
+.ctrls.fixed input[type=range] { width: 100%; }
+.ctrls.fixed output { display: inline-block; min-width: 10ch; font-variant-numeric: tabular-nums; }
+.ctrls.fixed button { justify-self: start; }
+.panel-h { font-family: var(--f-display); font-size: 12.5px; color: var(--ink-2); margin: 10px 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.panel-h b { color: var(--accent); margin-right: 4px; }
+.readgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 16px; margin-top: 10px; font-family: var(--f-mono); font-size: 12.5px; }
+.readgrid > div { white-space: nowrap; min-width: 0; }
+.readgrid .k { display: block; font-family: var(--f-display); font-size: 11.5px; color: var(--muted); }
+.readgrid .pill { min-width: 16ch; text-align: center; }
 .ask { font-size: 14px; color: var(--muted); font-style: italic; }
 /* Code map */
 details.mod { border: 1px solid var(--rule); border-radius: 10px; background: var(--surface); margin: 8px 0; }
@@ -211,19 +221,20 @@ footer { margin-top: 80px; color: var(--muted); font-size: 14px; border-top: 1px
 <p>Acquisition tests every hypothesis (PRN, Doppler bin, code phase). For each one it wipes off the carrier, multiplies by the replica code, and sums. The right hypothesis produces a peak. The figure below runs that search on a synthetic satellite with the real Gold codes.</p>
 
 <figure class="fig wide" id="fig1">
-  <div class="fig-h"><span class="tag">Figure 1</span>The FFT reference's search grid for one PRN</div>
-  <div class="ctrls">
+  <div class="fig-h"><span class="tag">Figure 1</span>Correlating one (PRN, Doppler) hypothesis against the record</div>
+  <div class="ctrls fixed">
     <div class="ctrl"><label for="f1-prn">Local replica PRN</label><select id="f1-prn"></select></div>
     <div class="ctrl"><label for="f1-cn0">C/N₀ <output id="f1-cn0-o"></output></label><input type="range" id="f1-cn0" min="30" max="45" step="1" value="42"></div>
+    <div class="ctrl"><label for="f1-dop">Doppler bin <output id="f1-dop-o"></output></label><input type="range" id="f1-dop" min="0" max="20" step="1" value="13"></div>
     <div class="ctrl"><label for="f1-nc">Code periods summed <output id="f1-nc-o"></output></label><input type="range" id="f1-nc" min="1" max="10" step="1" value="1"></div>
-    <div class="ctrl"><label for="f1-dop">Doppler row shown below <output id="f1-dop-o"></output></label><input type="range" id="f1-dop" min="0" max="20" step="1" value="13"></div>
-    <button id="f1-redraw" type="button">New noise</button>
+    <div class="ctrl"><button id="f1-redraw" type="button">New noise</button></div>
   </div>
-  <div class="pl-h" style="font-family:var(--f-display);font-size:12.5px;color:var(--ink-2)">Power over 21 Doppler bins × 1023 code phases. Click a row to plot it.</div>
-  <canvas id="f1-h" height="190" aria-label="Doppler by code phase power grid" style="cursor:pointer"></canvas>
-  <canvas id="f1-c" height="190" aria-label="Power against code phase for the selected Doppler row"></canvas>
-  <div class="readout" id="f1-r"></div>
-  <figcaption>The record holds PRN 7 at code phase 400 with a Doppler of 1 600 Hz, between the 1 500 and 2 000 Hz bins. Power is divided by the mean noise power, so noise averages 1 at every setting and the axes never move. Summing more code periods keeps the noise mean at 1 and narrows its spread, so the peak stands out. The peak spreads over neighbouring Doppler rows by \(\operatorname{sinc}^2(\Delta f\,T)\) with \(T = 1\) ms: 97% at the 1 500 Hz row, 57% at 2 000 Hz, 26% at 1 000 Hz. Pick another PRN and the grid holds only noise. The dashed line is twice the row's second peak: the FFT reference reports the satellite when the peak clears it.</figcaption>
+  <div class="panel-h"><b>A</b> Power against code phase, for the selected PRN and Doppler bin</div>
+  <canvas id="f1-c" height="200" aria-label="Correlation power against code phase"></canvas>
+  <div class="panel-h"><b>B</b> Power at the true code phase (400) against Doppler bin</div>
+  <canvas id="f1-p" height="150" aria-label="Correlation power at code phase 400 against Doppler"></canvas>
+  <div class="readgrid" id="f1-r"></div>
+  <figcaption>The record holds PRN 7 at code phase 400 with a Doppler of 1 600 Hz, between the 1 500 and 2 000 Hz bins. Both panels plot power divided by the mean noise power, on one fixed scale: noise averages 1 at every setting. Panel B shows why the Doppler bin matters: the peak follows \(1 + K\operatorname{sinc}^2(\Delta f\,T)\) with \(T = 1\) ms, so it keeps 97% at the 1 500 Hz bin, 57% at 2 000 Hz, and vanishes 1 kHz away. Summing more code periods leaves the noise mean at 1 and narrows its spread, so a weaker peak clears the dashed line at twice the second peak. That line is the FFT reference's decision rule. Pick another PRN and both panels hold only noise.</figcaption>
 </figure>
 
 <p>The search space at the study's configuration is 32 PRNs × 21 Doppler bins (−5 000 to +5 000 Hz in 500 Hz steps) × 1023 code phases: <strong>687 456 cells</strong>. Every acquisition method is a strategy for visiting those cells.</p>
@@ -846,79 +857,85 @@ function searchGrid(rec, prn, nBins, nPeriods) {
 }
 (function fig1() {
   const TRUE = { prn: 7, tau: 400, fd: 1600, th: 0.7 }, BINS = 21, PER = 10, YMAX = 35;
-  const sel = $("#f1-prn");
-  for (let p = 1; p <= 32; p++) sel.add(new Option("PRN " + p + (p === 7 ? " (present)" : ""), p));
-  sel.value = 7;
-  let seed = 11, grid = null, summed = null, key = "", pending = 0;
+  const fig = $("#fig1"), sel = $("#f1-prn"), cn0 = $("#f1-cn0"), dop = $("#f1-dop"), ncs = $("#f1-nc");
+  for (let p = 1; p <= 32; p++) sel.add(new Option("PRN " + p + (p === TRUE.prn ? " (present)" : ""), p));
+  sel.value = TRUE.prn;
+  const binHz = (b) => -5000 + 500 * b;
+  let seed = 11, grid = null, key = "", pending = 0;
   function recompute() {
-    const k = [sel.value, $("#f1-cn0").value, seed].join("|"); if (k === key) return; key = k;
-    const rec = received(TRUE.prn, TRUE.tau, TRUE.fd, TRUE.th, +$("#f1-cn0").value, PER, seed);
-    grid = searchGrid(rec, +sel.value, BINS, PER);
+    const k = [sel.value, cn0.value, seed].join("|"); if (k === key) return; key = k;
+    grid = searchGrid(received(TRUE.prn, TRUE.tau, TRUE.fd, TRUE.th, +cn0.value, PER, seed), +sel.value, BINS, PER);
   }
-  function sum() {
-    const nc = +$("#f1-nc").value; summed = new Float32Array(BINS * N);
-    for (let b = 0; b < BINS; b++) for (let m = 0; m < nc; m++) { const base = (b * PER + m) * N; for (let t = 0; t < N; t++) summed[b * N + t] += grid[base + t] / nc; }
+  /* mean over the first nc periods of one bin, so noise averages 1 whatever nc is */
+  function trace(bin, nc) {
+    const out = new Float32Array(N);
+    for (let m = 0; m < nc; m++) { const base = (bin * PER + m) * N; for (let t = 0; t < N; t++) out[t] += grid[base + t] / nc; }
+    return out;
   }
-  function ramp(v) { const a = hex(css("--code-bg")), b = hex(css("--s1")), c = hex(css("--ink"));
-    return v < 0.7 ? mix(a, b, v / 0.7) : mix(b, c, (v - 0.7) / 0.3); }
-  function hex(h) { h = h.replace("#", ""); if (h.length === 3) h = h.split("").map(x => x + x).join(""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
-  function mix(a, b, t) { return a.map((x, i) => Math.round(x + (b[i] - x) * Math.max(0, Math.min(1, t)))); }
-  function draw() {
-    if (!summed) return;
-    const row = +$("#f1-dop").value, nc = +$("#f1-nc").value, prn = +sel.value;
-    $("#f1-cn0-o").textContent = $("#f1-cn0").value + " dB-Hz"; $("#f1-nc-o").textContent = nc + (nc > 1 ? " ms" : " ms (coherent only)");
-    $("#f1-dop-o").textContent = (-5000 + 500 * row) + " Hz";
-    /* heatmap */
-    const hc = $("#f1-h"), H = setupCanvas(hc), L = 44, R = 12, T = 4, B = 4, pw = H.w - L - R, ph = H.h - T - B;
-    /* one image column per screen pixel, each the maximum of the code phases it covers, so a one-chip peak stays visible */
-    const cols = Math.max(1, Math.round(pw)), img = document.createElement("canvas"); img.width = cols; img.height = BINS;
-    const ig = img.getContext("2d"), id = ig.createImageData(cols, BINS), lut = [];
-    for (let i = 0; i <= 64; i++) lut.push(ramp(i / 64));
-    for (let b = 0; b < BINS; b++) for (let x = 0; x < cols; x++) {
-      const t0 = Math.floor(x * N / cols), t1 = Math.max(t0 + 1, Math.floor((x + 1) * N / cols)); let mx = 0;
-      for (let t = t0; t < t1; t++) mx = Math.max(mx, summed[b * N + t]);
-      const v = Math.pow(Math.min(1, Math.max(0, (mx - 1) / (YMAX * 0.6))), 0.75), c = lut[Math.round(v * 64)], o = ((BINS - 1 - b) * cols + x) * 4;
-      id.data[o] = c[0]; id.data[o + 1] = c[1]; id.data[o + 2] = c[2]; id.data[o + 3] = 255;
-    }
-    ig.putImageData(id, 0, 0); H.g.imageSmoothingEnabled = false; H.g.drawImage(img, L, T, pw, ph);
-    const rh = ph / BINS, ry = T + (BINS - 1 - row) * rh;
-    H.g.strokeStyle = css("--hit"); H.g.lineWidth = 1.5; H.g.strokeRect(L - 1, ry, pw + 2, rh);
-    font(H.g, 10.5); H.g.fillStyle = css("--muted"); H.g.textAlign = "right";
-    [[0, "−5 kHz"], [10, "0"], [20, "+5 kHz"]].forEach(([b, lab]) => H.g.fillText(lab, L - 5, T + (BINS - 1 - b) * rh + rh / 2 + 3));
-    hc._geom = { T, ph };
-    /* trace of the selected row */
-    const cv = $("#f1-c"), G = setupCanvas(cv), g = G.g, T2 = 10, B2 = 30, ph2 = G.h - T2 - B2;
-    const X = (t) => L + pw * t / (N - 1), Y = (v) => T2 + ph2 - ph2 * Math.min(v, YMAX) / YMAX;
+  function at(bin, nc, t) { let v = 0; for (let m = 0; m < nc; m++) v += grid[(bin * PER + m) * N + t]; return v / nc; }
+  const sinc2 = (df) => { const x = df * 1e-3; return x === 0 ? 1 : (Math.sin(Math.PI * x) / (Math.PI * x)) ** 2; };
+  function yAxis(g, L, R, w, T, ph) {
+    const Y = (v) => T + ph - ph * Math.min(v, YMAX) / YMAX;
     g.strokeStyle = css("--rule"); g.lineWidth = 1; g.fillStyle = css("--muted"); font(g, 10.5); g.textAlign = "right";
-    for (let v = 0; v <= YMAX; v += 10) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(G.w - R, Y(v)); g.stroke(); g.fillText(v, L - 5, Y(v) + 3); }
-    g.textAlign = "center"; for (let t = 0; t <= 1000; t += 200) g.fillText(t, X(t), G.h - 14);
-    g.fillText("code phase (samples = chips)", L + pw / 2, G.h - 1);
-    g.save(); g.translate(9, T2 + ph2 / 2); g.rotate(-Math.PI / 2); g.fillText("power ÷ noise", 0, 0); g.restore();
-    const r0 = row * N; let pk = 0; for (let t = 1; t < N; t++) if (summed[r0 + t] > summed[r0 + pk]) pk = t;
-    let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && summed[r0 + t] > sec) sec = summed[r0 + t]; }
-    g.strokeStyle = css("--s1"); g.lineWidth = 1.25; g.beginPath();
-    for (let t = 0; t < N; t++) { const x = X(t), y = Y(summed[r0 + t]); t ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
-    g.setLineDash([5, 4]); g.strokeStyle = css("--ink-2"); g.beginPath(); g.moveTo(L, Y(2 * sec)); g.lineTo(G.w - R, Y(2 * sec)); g.stroke(); g.setLineDash([]);
-    g.fillStyle = css("--ink-2"); g.textAlign = "right"; g.fillText("2 × second peak", G.w - R - 2, Y(2 * sec) - 4);
-    if (prn === TRUE.prn) { g.setLineDash([2, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(X(TRUE.tau), T2); g.lineTo(X(TRUE.tau), T2 + ph2); g.stroke(); g.setLineDash([]);
-      g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", X(TRUE.tau) + 4, T2 + 10); }
-    /* the reference's own decision, over the whole grid */
-    let gb = 0, gt = 0; for (let b = 0; b < BINS; b++) for (let t = 0; t < N; t++) if (summed[b * N + t] > summed[gb * N + gt]) { gb = b; gt = t; }
-    let gs = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - gt), N - Math.abs(t - gt)); if (d > 1 && summed[gb * N + t] > gs) gs = summed[gb * N + t]; }
-    const ratio = summed[gb * N + gt] / gs, det = ratio >= 2, right = prn === TRUE.prn && Math.abs(gt - TRUE.tau) <= 1 && Math.abs(-5000 + 500 * gb - TRUE.fd) <= 500;
-    const df = -5000 + 500 * row - TRUE.fd, x = df * 1e-3, s2 = x === 0 ? 1 : (Math.sin(Math.PI * x) / (Math.PI * x)) ** 2;
-    $("#f1-r").innerHTML = `<span>this row: Doppler error <b>${df} Hz</b>, expected peak <b>${(1 + Math.pow(10, +$("#f1-cn0").value / 10) / FS * N * s2).toFixed(1)}</b> × noise</span>` +
-      `<span>grid maximum: <b>${-5000 + 500 * gb} Hz</b>, code phase <b>${gt}</b>, peak / second peak <b>${ratio.toFixed(2)}</b></span>` +
-      `<span>${det ? (right ? '<span class="pill ok">detected, right cell</span>' : '<span class="pill no">false alarm</span>') : '<span class="pill no">not reported: ratio below 2.0</span>'}</span>`;
+    for (let v = 0; v <= 30; v += 10) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(w - R, Y(v)); g.stroke(); g.fillText(v, L - 6, Y(v) + 3); }
+    return Y;
   }
-  function schedule(full) { if (full) key += "*"; cancelAnimationFrame(pending); pending = requestAnimationFrame(() => { recompute(); sum(); draw(); }); }
-  ["#f1-prn", "#f1-cn0"].forEach(id => $(id).addEventListener("input", () => schedule(false)));
-  $("#f1-nc").addEventListener("input", () => { sum(); draw(); });
-  $("#f1-dop").addEventListener("input", draw);
-  $("#f1-redraw").addEventListener("click", () => { seed++; schedule(false); });
-  $("#f1-h").addEventListener("click", (e) => { const cv = $("#f1-h"), r = cv.getBoundingClientRect(), g = cv._geom; if (!g) return;
-    const b = 20 - Math.floor((e.clientY - r.top - g.T) / (g.ph / 21)); if (b >= 0 && b <= 20) { $("#f1-dop").value = b; draw(); } });
-  recompute(); sum(); onRedraw(draw);
+  function draw() {
+    if (!grid) return;
+    const bin = +dop.value, nc = +ncs.value, prn = +sel.value, present = prn === TRUE.prn;
+    $("#f1-cn0-o").textContent = cn0.value + " dB-Hz";
+    $("#f1-dop-o").textContent = (binHz(bin) > 0 ? "+" : "") + binHz(bin) + " Hz";
+    $("#f1-nc-o").textContent = nc + " ms";
+    const tr = trace(bin, nc), L = 46, R = 14;
+    let pk = 0; for (let t = 1; t < N; t++) if (tr[t] > tr[pk]) pk = t;
+    let sec = 0; for (let t = 0; t < N; t++) { const d = Math.min(Math.abs(t - pk), N - Math.abs(t - pk)); if (d > 1 && tr[t] > sec) sec = tr[t]; }
+    const ratio = tr[pk] / sec, detected = ratio >= 2, right = present && Math.abs(pk - TRUE.tau) <= 1 && Math.abs(binHz(bin) - TRUE.fd) <= 500;
+
+    /* panel A */
+    { const G = setupCanvas($("#f1-c")), g = G.g, T = 8, B = 30, pw = G.w - L - R, ph = G.h - T - B, X = (t) => L + pw * t / (N - 1);
+      const Y = yAxis(g, L, R, G.w, T, ph);
+      g.textAlign = "center"; for (let t = 0; t <= 1000; t += 200) g.fillText(t, X(t), G.h - 15);
+      g.fillText("code phase (samples = chips)", L + pw / 2, G.h - 2);
+      g.save(); g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("power ÷ noise", 0, 0); g.restore();
+      if (present) { g.setLineDash([2, 3]); g.strokeStyle = css("--muted"); g.beginPath(); g.moveTo(X(TRUE.tau), T); g.lineTo(X(TRUE.tau), T + ph); g.stroke(); g.setLineDash([]);
+        g.textAlign = "left"; g.fillStyle = css("--ink-2"); g.fillText("true phase 400", X(TRUE.tau) + 4, T + 10); }
+      g.strokeStyle = css("--s1"); g.lineWidth = 1.25; g.beginPath();
+      for (let t = 0; t < N; t++) { const x = X(t), y = Y(tr[t]); t ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke();
+      g.setLineDash([5, 4]); g.strokeStyle = css("--ink"); g.lineWidth = 1; g.beginPath(); g.moveTo(L, Y(2 * sec)); g.lineTo(G.w - R, Y(2 * sec)); g.stroke(); g.setLineDash([]);
+      g.fillStyle = css("--ink"); g.textAlign = "right"; g.fillText("2 × second peak", G.w - R - 2, Y(2 * sec) - 4);
+    }
+    /* panel B */
+    const K = Math.pow(10, +cn0.value / 10) / FS * N;
+    { const G = setupCanvas($("#f1-p")), g = G.g, T = 8, B = 30, pw = G.w - L - R, ph = G.h - T - B, X = (f) => L + pw * (f + 5250) / 10500;
+      const Y = yAxis(g, L, R, G.w, T, ph);
+      g.textAlign = "center"; for (let f = -5000; f <= 5000; f += 2500) g.fillText((f > 0 ? "+" : "") + f, X(f), G.h - 15);
+      g.fillText("Doppler bin (Hz)", L + pw / 2, G.h - 2);
+      g.save(); g.translate(10, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText("power ÷ noise", 0, 0); g.restore();
+      g.fillStyle = css("--accent-soft"); g.fillRect(X(binHz(bin)) - pw / 42, T, pw / 21, ph);
+      g.strokeStyle = css("--muted"); g.lineWidth = 1.5; g.beginPath();
+      for (let i = 0; i <= 400; i++) { const f = -5250 + 10500 * i / 400, y = Y(1 + (present ? K * sinc2(f - TRUE.fd) : 0)); i ? g.lineTo(X(f), y) : g.moveTo(X(f), y); } g.stroke();
+      for (let b = 0; b < BINS; b++) { const v = at(b, nc, TRUE.tau), on = b === bin;
+        g.beginPath(); g.arc(X(binHz(b)), Y(v), on ? 5.5 : 3.5, 0, 7); g.fillStyle = css(on ? "--hit" : "--s1"); g.fill(); g.strokeStyle = css("--surface"); g.lineWidth = 1.5; g.stroke(); }
+      font(g, 10.5); g.textAlign = "left"; g.fillStyle = css("--ink-2");
+      g.fillText(pw < 420 ? "line: expected · dots: measured" : present ? "line: expected 1 + K·sinc²   dots: measured" : "line: expected (noise only)   dots: measured", L + 6, T + 11);
+    }
+    /* readout and test hooks */
+    const df = binHz(bin) - TRUE.fd, att = present ? sinc2(df) : 0, cell = (k, v) => `<div><span class="k">${k}</span>${v}</div>`;
+    const pill = detected ? (right ? '<span class="pill ok">detected, right cell</span>' : '<span class="pill no">false alarm</span>') : '<span class="pill no">not detected</span>';
+    $("#f1-r").innerHTML =
+      cell("Doppler error", present ? `<b>${df > 0 ? "+" : ""}${df} Hz</b>` : "<b>no signal</b>") +
+      cell("Kept by sinc²", `<b>${(100 * att).toFixed(0)}%</b>`) +
+      cell("Expected peak", `<b>${(1 + K * att).toFixed(1)}</b> × noise`) +
+      cell("Measured peak", `<b>${tr[pk].toFixed(1)}</b> at phase <b>${pk}</b>`) +
+      cell("Peak ÷ second peak", `<b>${ratio.toFixed(2)}</b> (needs 2.00)`) +
+      cell("Decision", pill);
+    Object.assign(fig.dataset, { ymax: String(YMAX), peakPhase: String(pk), ratio: ratio.toFixed(3), detected: detected ? (right ? "right" : "wrong") : "no" });
+  }
+  function schedule() { cancelAnimationFrame(pending); pending = requestAnimationFrame(() => { recompute(); draw(); }); }
+  sel.addEventListener("input", schedule); sel.addEventListener("change", schedule); cn0.addEventListener("input", schedule);
+  dop.addEventListener("input", draw); ncs.addEventListener("input", draw);
+  $("#f1-redraw").addEventListener("click", () => { seed++; schedule(); });
+  recompute(); onRedraw(draw);
 })();
 
 /* ---------- Figure 2: one query, one row ---------- */
